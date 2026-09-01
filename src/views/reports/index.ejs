@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+
+<section class="panel">
+  <form method="get" class="filters">
+    <label>Mes<input required type="month" name="month" value="<%= month %>"></label>
+    <label>Trabajador<select name="worker_id"><option value="">Reporte general</option><% workers.forEach((w) => { %><option value="<%= w.id %>" <%= workerId == w.id ? 'selected' : '' %>><%= w.full_name %></option><% }) %></select></label>
+    <button>Generar reporte</button>
+  </form>
+</section>
+
+<section class="cards compact">
+  <article class="card"><span>Registros del mes</span><strong><%= totals.records || 0 %></strong></article>
+  <article class="card danger"><span>Faltas injustificadas</span><strong><%= totals.unjustified_absences || 0 %></strong></article>
+  <article class="card warning"><span>Atrasos</span><strong><%= totals.late_count || 0 %></strong></article>
+  <article class="card"><span>Minutos atraso</span><strong><%= totals.late_minutes || 0 %></strong></article>
+</section>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Dias trabajados</th><th>F. justificadas</th><th>F. injustificadas</th><th>Atrasos</th><th>Min. atraso</th><th>Vacaciones</th><th>Permisos</th></tr></thead>
+      <tbody>
+        <% if (!report.length) { %><tr><td colspan="10" class="empty">No hay datos para el reporte.</td></tr><% } %>
+        <% report.forEach((r) => { %><tr><td><%= r.full_name %></td><td><%= r.cedula %></td><td><%= r.branch %></td><td><%= r.worked_days || 0 %></td><td><%= r.justified_absences || 0 %></td><td><%= r.unjustified_absences || 0 %></td><td><%= r.late_count || 0 %></td><td><%= r.late_minutes || 0 %></td><td><%= r.vacation_days || 0 %></td><td><%= r.permits || 0 %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

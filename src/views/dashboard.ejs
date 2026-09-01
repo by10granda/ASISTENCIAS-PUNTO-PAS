@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+
+<section class="cards">
+  <article class="card"><span>Activos</span><strong><%= counts.active_workers || 0 %></strong></article>
+  <article class="card success"><span>Presentes hoy</span><strong><%= counts.present_today || 0 %></strong></article>
+  <article class="card"><span>Faltas justificadas</span><strong><%= counts.justified_today || 0 %></strong></article>
+  <article class="card danger"><span>Faltas injustificadas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
+  <article class="card warning"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong></article>
+  <article class="card"><span>De vacaciones</span><strong><%= (counts.vacation_today || 0) + (vacationRanges.total || 0) %></strong></article>
+  <article class="card"><span>Con permiso</span><strong><%= counts.permit_today || 0 %></strong></article>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <h2>Resumen mensual <%= month %></h2>
+    <a class="button" href="/reportes?month=<%= month %>">Ver reportes</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tipo de novedad</th><th>Total</th><th>Minutos atraso</th></tr></thead>
+      <tbody>
+        <% if (!monthly.length) { %><tr><td colspan="3" class="empty">No existen registros este mes.</td></tr><% } %>
+        <% monthly.forEach((row) => { %>
+          <tr><td><span class="pill"><%= row.status %></span></td><td><%= row.total %></td><td><%= row.minutes || 0 %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

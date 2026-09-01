@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+
+<section class="panel">
+  <div class="section-title">
+    <form class="inline-form" method="get">
+      <input type="search" name="q" value="<%= q %>" placeholder="Buscar por nombre, cedula, cargo o sucursal">
+      <button>Buscar</button>
+    </form>
+    <a class="button" href="/trabajadores/new">Registrar trabajador</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trabajador</th><th>Cedula</th><th>Cargo</th><th>Sucursal/area</th><th>Ingreso</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        <% if (!workers.length) { %><tr><td colspan="7" class="empty">No hay trabajadores registrados.</td></tr><% } %>
+        <% workers.forEach((worker) => { %>
+          <tr>
+            <td><%= worker.full_name %></td>
+            <td><%= worker.cedula %></td>
+            <td><%= worker.position %></td>
+            <td><%= worker.branch %></td>
+            <td><%= worker.hire_date %></td>
+            <td><span class="pill <%= worker.status === 'Activo' ? 'ok' : 'muted' %>"><%= worker.status %></span></td>
+            <td><a class="link" href="/trabajadores/<%= worker.id %>/edit">Editar</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

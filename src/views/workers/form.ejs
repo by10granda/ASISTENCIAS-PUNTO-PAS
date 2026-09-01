@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<%- include('../partials/errors') %>
+
+<section class="panel narrow">
+  <form method="post" action="<%= action %>" class="form-grid confirm-important">
+    <label>Nombres y apellidos<input required name="full_name" value="<%= worker.full_name || '' %>"></label>
+    <label>Cedula<input required name="cedula" value="<%= worker.cedula || '' %>"></label>
+    <label>Cargo<input required name="position" value="<%= worker.position || '' %>"></label>
+    <label>Sucursal o area<input required name="branch" value="<%= worker.branch || '' %>"></label>
+    <label>Fecha de ingreso<input required type="date" name="hire_date" value="<%= worker.hire_date || '' %>"></label>
+    <label>Estado<select name="status"><option <%= worker.status !== 'Inactivo' ? 'selected' : '' %>>Activo</option><option <%= worker.status === 'Inactivo' ? 'selected' : '' %>>Inactivo</option></select></label>
+    <div class="actions"><a class="button ghost" href="/trabajadores">Cancelar</a><button>Guardar</button></div>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

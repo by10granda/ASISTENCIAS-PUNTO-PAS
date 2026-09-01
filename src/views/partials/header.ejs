@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Control de Asistencia</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">CA</span>
+      <div>
+        <strong>Asistencias</strong>
+        <small>Control laboral</small>
+      </div>
+    </div>
+    <nav>
+      <a class="<%= path === '/' ? 'active' : '' %>" href="/">Panel</a>
+      <a class="<%= path.startsWith('/trabajadores') ? 'active' : '' %>" href="/trabajadores">Trabajadores</a>
+      <a class="<%= path.startsWith('/asistencia') ? 'active' : '' %>" href="/asistencia">Asistencia</a>
+      <a class="<%= path.startsWith('/vacaciones') ? 'active' : '' %>" href="/vacaciones">Vacaciones</a>
+      <a class="<%= path.startsWith('/historial') ? 'active' : '' %>" href="/historial">Historial</a>
+      <a class="<%= path.startsWith('/reportes') ? 'active' : '' %>" href="/reportes">Reportes</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1><%= title %></h1>
+        <p>Control diario de asistencia, novedades e historial.</p>
+      </div>
+    </header>

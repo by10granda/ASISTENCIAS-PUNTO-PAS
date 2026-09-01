@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<%- include('../partials/errors') %>
+
+<section class="panel">
+  <h2>Registrar vacaciones</h2>
+  <form method="post" action="/vacaciones" class="form-grid confirm-important">
+    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %></option><% }) %></select></label>
+    <label>Inicio<input required type="date" name="start_date"></label>
+    <label>Finalizacion<input required type="date" name="end_date"></label>
+    <label>Estado<select name="status"><option>Programadas</option><option>En curso</option><option>Finalizadas</option></select></label>
+    <label class="span-2">Observacion<textarea name="observation" rows="3"></textarea></label>
+    <div class="actions"><button>Guardar vacaciones</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Historial de vacaciones</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Dias</th><th>Estado</th><th>Observacion</th></tr></thead>
+      <tbody>
+        <% if (!vacations.length) { %><tr><td colspan="6" class="empty">No hay vacaciones registradas.</td></tr><% } %>
+        <% vacations.forEach((v) => { %><tr><td><%= v.full_name %></td><td><%= v.start_date %></td><td><%= v.end_date %></td><td><%= v.total_days %></td><td><span class="pill"><%= v.status %></span></td><td><%= v.observation || '-' %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+
+<section class="panel">
+  <form method="get" class="filters">
+    <label>Trabajador<select name="worker_id"><option value="">Todos</option><% workers.forEach((w) => { %><option value="<%= w.id %>" <%= filters.worker_id == w.id ? 'selected' : '' %>><%= w.full_name %></option><% }) %></select></label>
+    <label>Fecha<input type="date" name="date" value="<%= filters.date %>"></label>
+    <label>Desde<input type="date" name="from" value="<%= filters.from %>"></label>
+    <label>Hasta<input type="date" name="to" value="<%= filters.to %>"></label>
+    <label>Mes<input type="month" name="month" value="<%= filters.month %>"></label>
+    <label>Sucursal<select name="branch"><option value="">Todas</option><% branches.forEach((b) => { %><option <%= filters.branch === b.branch ? 'selected' : '' %>><%= b.branch %></option><% }) %></select></label>
+    <label>Tipo<select name="status"><option value="">Todos</option><% statuses.forEach((s) => { %><option <%= filters.status === s ? 'selected' : '' %>><%= s %></option><% }) %></select></label>
+    <button>Filtrar</button>
+    <a class="button ghost" href="/historial">Limpiar</a>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Novedad</th><th>Atraso</th><th>Observacion</th><th>Usuario</th></tr></thead>
+      <tbody>
+        <% if (!records.length) { %><tr><td colspan="8" class="empty">No hay registros con los filtros seleccionados.</td></tr><% } %>
+        <% records.forEach((r) => { %><tr><td><%= r.record_date %></td><td><%= r.full_name %></td><td><%= r.cedula %></td><td><%= r.branch %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.observation || r.justified_reason || r.permit_reason || '-' %></td><td><%= r.registered_by %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
