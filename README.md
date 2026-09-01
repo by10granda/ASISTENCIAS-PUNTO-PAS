@@ -2,6 +2,8 @@
 
 Sistema web basico, moderno y responsive para registrar trabajadores, asistencia diaria, novedades, vacaciones, historial y reportes mensuales. Esta version guarda la informacion en Google Sheets y esta preparada para desplegar en Vercel.
 
+Manual de uso: `MANUAL_USUARIO.md`.
+
 ## Analisis de requerimientos
 
 Para 35 trabajadores, Google Sheets es suficiente si el sistema lo usan pocos administradores. El volumen aproximado seria de 12.775 registros de asistencia por ano, muy por debajo del limite de Google Sheets.
