@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { attendanceRouter } from './routes/attendance.js';
 import { historyRouter } from './routes/history.js';
+import { incidentsRouter } from './routes/incidents.js';
 import { reportsRouter } from './routes/reports.js';
 import { vacationsRouter } from './routes/vacations.js';
 import { workersRouter } from './routes/workers.js';
@@ -67,6 +68,7 @@ app.get('/', async (req, res, next) => {
 app.use('/trabajadores', workersRouter);
 app.use('/asistencia', attendanceRouter);
 app.use('/vacaciones', vacationsRouter);
+app.use('/novedades', incidentsRouter);
 app.use('/historial', historyRouter);
 app.use('/reportes', reportsRouter);
 

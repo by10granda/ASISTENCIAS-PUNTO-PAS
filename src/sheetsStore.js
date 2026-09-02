@@ -20,6 +20,14 @@ const sheetsConfig = {
   vacations: {
     name: 'vacations',
     headers: ['id', 'worker_id', 'start_date', 'end_date', 'total_days', 'observation', 'status', 'created_at', 'updated_at']
+  },
+  attentionCalls: {
+    name: 'attention_calls',
+    headers: ['id', 'worker_id', 'record_date', 'reason', 'description', 'registered_by', 'created_at', 'updated_at']
+  },
+  jobAbandonments: {
+    name: 'job_abandonments',
+    headers: ['id', 'worker_id', 'record_date', 'exit_time', 'reason', 'observation', 'registered_by', 'created_at', 'updated_at']
   }
 };
 
@@ -97,8 +105,12 @@ export async function deleteWorkerAndData(id) {
 
   const attendance = await readRowsWithNumbers(sheetsConfig.attendance);
   const vacations = await readRowsWithNumbers(sheetsConfig.vacations);
+  const attentionCalls = await readRowsWithNumbers(sheetsConfig.attentionCalls);
+  const jobAbandonments = await readRowsWithNumbers(sheetsConfig.jobAbandonments);
   await deleteRows(sheetsConfig.attendance, attendance.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.vacations, vacations.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.attentionCalls, attentionCalls.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.jobAbandonments, jobAbandonments.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.workers, [worker.rowNumber]);
   return true;
 }
@@ -126,6 +138,26 @@ export async function createVacation(vacation) {
   const vacations = await listVacations();
   const now = timestamp();
   await appendRow(sheetsConfig.vacations, { ...vacation, id: nextId(vacations), created_at: now, updated_at: now });
+}
+
+export async function listAttentionCalls() {
+  return readRows(sheetsConfig.attentionCalls);
+}
+
+export async function createAttentionCall(record) {
+  const records = await listAttentionCalls();
+  const now = timestamp();
+  await appendRow(sheetsConfig.attentionCalls, { ...record, id: nextId(records), created_at: now, updated_at: now });
+}
+
+export async function listJobAbandonments() {
+  return readRows(sheetsConfig.jobAbandonments);
+}
+
+export async function createJobAbandonment(record) {
+  const records = await listJobAbandonments();
+  const now = timestamp();
+  await appendRow(sheetsConfig.jobAbandonments, { ...record, id: nextId(records), created_at: now, updated_at: now });
 }
 
 async function readRows(config) {

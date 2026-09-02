@@ -27,6 +27,8 @@ El sistema crea automaticamente estas hojas dentro del archivo configurado:
 - `workers`
 - `attendance_records`
 - `vacations`
+- `attention_calls`
+- `job_abandonments`
 
 Tambien crea los encabezados necesarios si no existen.
 
@@ -85,6 +87,7 @@ Tambien crea los encabezados necesarios si no existen.
 - Vacaciones: registro de periodos.
 - Historial: filtros por trabajador, fecha, rango, mes, sucursal y tipo.
 - Reportes: reporte mensual individual o general.
+- Novedades: registro de llamados de atencion y abandonos de trabajo por trabajador.
 
 ## Crear credenciales de Google Sheets
 

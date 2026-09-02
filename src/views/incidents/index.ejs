@@ -1,0 +1,55 @@
+<%- include('../partials/header') %>
+<%- include('../partials/errors') %>
+
+<section class="panel">
+  <h2>Registrar llamado de atencion</h2>
+  <form method="post" action="/novedades/llamados" class="form-grid confirm-important">
+    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %></option><% }) %></select></label>
+    <label>Fecha<input required type="date" name="record_date" value="<%= today %>"></label>
+    <label>Usuario que registra<input required name="registered_by" value="Administrador"></label>
+    <label>Motivo<input required name="reason" placeholder="Ej: Incumplimiento de horario"></label>
+    <label class="span-2">Descripcion<textarea required name="description" rows="3" placeholder="Detalle del llamado de atencion"></textarea></label>
+    <div class="actions"><button>Guardar llamado de atencion</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Registrar abandono de trabajo</h2>
+  <form method="post" action="/novedades/abandonos" class="form-grid confirm-important">
+    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %></option><% }) %></select></label>
+    <label>Fecha<input required type="date" name="record_date" value="<%= today %>"></label>
+    <label>Hora de salida, si aplica<input type="time" name="exit_time"></label>
+    <label>Usuario que registra<input required name="registered_by" value="Administrador"></label>
+    <label class="span-2">Motivo o detalle<textarea required name="reason" rows="3" placeholder="Detalle del abandono de trabajo"></textarea></label>
+    <label class="span-2">Observacion<textarea name="observation" rows="3"></textarea></label>
+    <div class="actions"><button>Guardar abandono de trabajo</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Historial de llamados de atencion</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Motivo</th><th>Descripcion</th><th>Usuario</th><th>Registrado</th></tr></thead>
+      <tbody>
+        <% if (!attentionCalls.length) { %><tr><td colspan="6" class="empty">No hay llamados de atencion registrados.</td></tr><% } %>
+        <% attentionCalls.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.reason %></td><td><%= record.description %></td><td><%= record.registered_by %></td><td><%= record.created_at %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Historial de abandonos de trabajo</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Hora salida</th><th>Motivo</th><th>Observacion</th><th>Usuario</th><th>Registrado</th></tr></thead>
+      <tbody>
+        <% if (!jobAbandonments.length) { %><tr><td colspan="7" class="empty">No hay abandonos de trabajo registrados.</td></tr><% } %>
+        <% jobAbandonments.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.exit_time || '-' %></td><td><%= record.reason %></td><td><%= record.observation || '-' %></td><td><%= record.registered_by %></td><td><%= record.created_at %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
