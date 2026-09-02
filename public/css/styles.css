@@ -58,6 +58,7 @@ button:hover, .button:hover { background: var(--primary-dark); }
 .button.ghost { background: #eef2f8; color: var(--text); }
 .link { color: var(--primary); font-weight: 800; }
 .actions { grid-column: 1 / -1; display: flex; gap: 10px; justify-content: flex-end; }
+.export-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .span-2 { grid-column: span 2; }
 .checkbox { display: flex; align-items: center; gap: 8px; padding-top: 28px; }
 .checkbox input { width: auto; }

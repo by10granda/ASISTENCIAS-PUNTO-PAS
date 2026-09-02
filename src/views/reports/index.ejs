@@ -2,7 +2,9 @@
 
 <section class="panel">
   <form method="get" class="filters">
-    <label>Mes<input required type="month" name="month" value="<%= month %>"></label>
+    <label>Mes<input type="month" name="month" value="<%= month %>"></label>
+    <label>Desde<input type="date" name="from" value="<%= start %>"></label>
+    <label>Hasta<input type="date" name="to" value="<%= end %>"></label>
     <label>Trabajador<select name="worker_id"><option value="">Reporte general</option><% workers.forEach((w) => { %><option value="<%= w.id %>" <%= workerId == w.id ? 'selected' : '' %>><%= w.full_name %></option><% }) %></select></label>
     <button>Generar reporte</button>
   </form>
@@ -16,6 +18,13 @@
 </section>
 
 <section class="panel">
+  <div class="section-title">
+    <h2>Reporte del <%= start %> al <%= end %></h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/reportes/excel?<%= exportQuery %>">Descargar Excel</a>
+      <a class="button ghost" href="/reportes/pdf?<%= exportQuery %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Dias trabajados</th><th>F. justificadas</th><th>F. injustificadas</th><th>Atrasos</th><th>Min. atraso</th><th>Vacaciones</th><th>Permisos</th></tr></thead>

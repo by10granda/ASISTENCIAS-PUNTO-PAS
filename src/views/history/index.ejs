@@ -15,6 +15,13 @@
 </section>
 
 <section class="panel">
+  <div class="section-title">
+    <h2>Resultados del historial</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/historial/excel?<%= exportQuery %>">Descargar Excel</a>
+      <a class="button ghost" href="/historial/pdf?<%= exportQuery %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Fecha</th><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Novedad</th><th>Atraso</th><th>Observacion</th><th>Usuario</th></tr></thead>
