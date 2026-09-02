@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createWorker, findWorker, listWorkers, updateWorker } from '../sheetsStore.js';
+import { createWorker, deleteWorkerAndData, findWorker, listWorkers, updateWorker } from '../sheetsStore.js';
 import { clean, requireText } from '../utils.js';
 
 export const workersRouter = Router();
@@ -64,6 +64,22 @@ workersRouter.post('/:id', async (req, res, next) => {
       const errors = ['Ya existe otro trabajador con esa cedula.'];
       return res.status(422).render('workers/form', { title: 'Editar trabajador', worker, errors, action: `/trabajadores/${worker.id}` });
     }
+    next(error);
+  }
+});
+
+workersRouter.post('/:id/delete', async (req, res, next) => {
+  try {
+    const worker = await findWorker(req.params.id);
+    if (!worker) return res.status(404).render('error', { title: 'No encontrado', message: 'Trabajador no encontrado.' });
+    if (clean(req.body.confirm_delete) !== 'ELIMINAR') {
+      const errors = ['Para eliminar definitivamente debe escribir la palabra ELIMINAR.'];
+      return res.status(422).render('workers/form', { title: 'Editar trabajador', worker, errors, action: `/trabajadores/${worker.id}` });
+    }
+
+    await deleteWorkerAndData(worker.id);
+    res.redirect('/trabajadores');
+  } catch (error) {
     next(error);
   }
 });

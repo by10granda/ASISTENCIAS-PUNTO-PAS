@@ -25,6 +25,18 @@ document.querySelectorAll('.confirm-important').forEach((form) => {
   });
 });
 
+document.querySelectorAll('.delete-worker-form').forEach((form) => {
+  form.addEventListener('submit', (event) => {
+    const input = form.querySelector('[name="confirm_delete"]');
+    if (input?.value !== 'ELIMINAR') {
+      alert('Debe escribir exactamente la palabra ELIMINAR para continuar.');
+      event.preventDefault();
+      return;
+    }
+    if (!confirm('Esta accion eliminara definitivamente al trabajador y todo su historial. No se puede deshacer.')) event.preventDefault();
+  });
+});
+
 const attendanceRecordDate = document.querySelector('#attendanceRecordDate');
 attendanceRecordDate?.addEventListener('change', () => {
   if (attendanceRecordDate.value) window.location.href = `/asistencia?date=${attendanceRecordDate.value}`;

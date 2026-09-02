@@ -89,6 +89,20 @@ export async function updateWorker(id, worker) {
   return true;
 }
 
+export async function deleteWorkerAndData(id) {
+  const workerId = String(id);
+  const workers = await readRowsWithNumbers(sheetsConfig.workers);
+  const worker = workers.find((row) => row.id === workerId);
+  if (!worker) return false;
+
+  const attendance = await readRowsWithNumbers(sheetsConfig.attendance);
+  const vacations = await readRowsWithNumbers(sheetsConfig.vacations);
+  await deleteRows(sheetsConfig.attendance, attendance.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.vacations, vacations.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.workers, [worker.rowNumber]);
+  return true;
+}
+
 export async function listAttendance() {
   return normalizeNumbers(await readRows(sheetsConfig.attendance), ['late_minutes']);
 }
@@ -150,6 +164,33 @@ async function updateRow(config, rowNumber, data) {
     valueInputOption: 'RAW',
     requestBody: { values: [rowFromObject(config.headers, data)] }
   });
+}
+
+async function deleteRows(config, rowNumbers) {
+  if (!rowNumbers.length) return;
+  const sheets = getClient();
+  const sheetId = await getSheetId(config.name);
+  const requests = [...rowNumbers]
+    .sort((a, b) => b - a)
+    .map((rowNumber) => ({
+      deleteDimension: {
+        range: {
+          sheetId,
+          dimension: 'ROWS',
+          startIndex: rowNumber - 1,
+          endIndex: rowNumber
+        }
+      }
+    }));
+  await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+}
+
+async function getSheetId(sheetName) {
+  const sheets = getClient();
+  const metadata = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = metadata.data.sheets.find((item) => item.properties.title === sheetName);
+  if (!sheet) throw new Error(`No existe la hoja ${sheetName}.`);
+  return sheet.properties.sheetId;
 }
 
 function objectFromRow(headers, row) {
