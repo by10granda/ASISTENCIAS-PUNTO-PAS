@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
-import { listAttendance, listVacations, listWorkers } from '../sheetsStore.js';
+import { listAttendance, listAttentionCalls, listJobAbandonments, listVacations, listWorkers } from '../sheetsStore.js';
 import { currentMonth, monthRange } from '../utils.js';
 
 export const reportsRouter = Router();
@@ -15,7 +15,9 @@ const reportColumns = [
   { header: 'Atrasos', key: 'late_count', width: 12 },
   { header: 'Min. atraso', key: 'late_minutes', width: 14 },
   { header: 'Vacaciones', key: 'vacation_days', width: 14 },
-  { header: 'Permisos', key: 'permits', width: 12 }
+  { header: 'Permisos', key: 'permits', width: 12 },
+  { header: 'Llamados atencion', key: 'attention_calls', width: 18 },
+  { header: 'Abandonos trabajo', key: 'job_abandonments', width: 18 }
 ];
 
 reportsRouter.get('/', async (req, res, next) => {
@@ -54,11 +56,15 @@ async function buildReportData(query) {
   const workers = (await listWorkers()).sort((a, b) => a.full_name.localeCompare(b.full_name));
   const records = (await listAttendance()).filter((record) => record.record_date >= start && record.record_date <= end);
   const vacations = (await listVacations()).filter((vacation) => vacation.end_date >= start && vacation.start_date <= end);
+  const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
+  const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
   const reportWorkers = workerId ? workers.filter((worker) => worker.id === workerId) : workers;
   const report = reportWorkers.map((worker) => buildWorkerReport(
     worker,
     records.filter((record) => record.worker_id === worker.id),
     vacations.filter((vacation) => vacation.worker_id === worker.id),
+    attentionCalls.filter((record) => record.worker_id === worker.id),
+    jobAbandonments.filter((record) => record.worker_id === worker.id),
     start,
     end
   ));
@@ -66,13 +72,15 @@ async function buildReportData(query) {
     records: records.length,
     unjustified_absences: records.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
     late_count: records.filter((record) => record.status === 'ATRASO').length,
-    late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0)
+    late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
+    attention_calls: attentionCalls.length,
+    job_abandonments: jobAbandonments.length
   };
   const exportQuery = new URLSearchParams({ worker_id: workerId, from: start, to: end }).toString();
   return { month, workerId, start, end, workers, report, totals, exportQuery };
 }
 
-function buildWorkerReport(worker, records, vacations, start, end) {
+function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbandonments, start, end) {
   return {
     id: worker.id,
     full_name: worker.full_name,
@@ -84,7 +92,9 @@ function buildWorkerReport(worker, records, vacations, start, end) {
     late_count: count(records, 'ATRASO'),
     late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
     vacation_days: count(records, 'VACACIONES') + vacations.reduce((sum, vacation) => sum + overlappingDays(vacation.start_date, vacation.end_date, start, end), 0),
-    permits: count(records, 'PERMISO')
+    permits: count(records, 'PERMISO'),
+    attention_calls: attentionCalls.length,
+    job_abandonments: jobAbandonments.length
   };
 }
 
