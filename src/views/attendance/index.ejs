@@ -3,11 +3,14 @@
 
 <section class="panel">
   <div class="section-title">
-    <h2>Registro diario</h2>
-    <form class="inline-form" method="get"><input type="date" name="date" value="<%= date %>"><button>Cambiar fecha</button></form>
+    <div>
+      <h2>Registro diario</h2>
+      <p>Actualmente esta viendo y registrando asistencia para la fecha: <strong><%= date %></strong></p>
+    </div>
+    <form class="inline-form" method="get"><input id="attendanceDateFilter" type="date" name="date" value="<%= date %>"><button>Cambiar fecha</button></form>
   </div>
   <form method="post" action="/asistencia" class="form-grid confirm-important" id="attendanceForm">
-    <input type="hidden" name="record_date" value="<%= date %>">
+    <label>Fecha del registro<input id="attendanceRecordDate" required type="date" name="record_date" value="<%= date %>"></label>
     <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %> - <%= w.branch %></option><% }) %></select></label>
     <label>Estado<select required name="status" id="statusSelect"><% statuses.forEach((s) => { %><option><%= s %></option><% }) %></select></label>
     <label>Usuario que registra<input required name="registered_by" value="Administrador"></label>

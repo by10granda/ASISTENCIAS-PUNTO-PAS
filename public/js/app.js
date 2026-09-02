@@ -24,3 +24,8 @@ document.querySelectorAll('.confirm-important').forEach((form) => {
     if (!confirm('Confirme que desea guardar esta informacion.')) event.preventDefault();
   });
 });
+
+const attendanceRecordDate = document.querySelector('#attendanceRecordDate');
+attendanceRecordDate?.addEventListener('change', () => {
+  if (attendanceRecordDate.value) window.location.href = `/asistencia?date=${attendanceRecordDate.value}`;
+});
