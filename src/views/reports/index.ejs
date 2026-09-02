@@ -2,7 +2,6 @@
 
 <section class="panel">
   <form method="get" class="filters">
-    <label>Mes<input type="month" name="month" value="<%= month %>"></label>
     <label>Desde<input type="date" name="from" value="<%= start %>"></label>
     <label>Hasta<input type="date" name="to" value="<%= end %>"></label>
     <label>Trabajador<select name="worker_id"><option value="">Reporte general</option><% workers.forEach((w) => { %><option value="<%= w.id %>" <%= workerId == w.id ? 'selected' : '' %>><%= w.full_name %></option><% }) %></select></label>

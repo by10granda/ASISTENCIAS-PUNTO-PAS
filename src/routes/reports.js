@@ -46,7 +46,7 @@ reportsRouter.get('/pdf', async (req, res, next) => {
 });
 
 async function buildReportData(query) {
-  const month = query.month || currentMonth();
+  const month = currentMonth();
   const workerId = query.worker_id || '';
   const monthDates = monthRange(month);
   const start = query.from || monthDates.start;
@@ -61,7 +61,7 @@ async function buildReportData(query) {
     late_count: records.filter((record) => record.status === 'ATRASO').length,
     late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0)
   };
-  const exportQuery = new URLSearchParams({ month, worker_id: workerId, from: start, to: end }).toString();
+  const exportQuery = new URLSearchParams({ worker_id: workerId, from: start, to: end }).toString();
   return { month, workerId, start, end, workers, report, totals, exportQuery };
 }
 
