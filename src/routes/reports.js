@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
-import { listAttendance, listWorkers } from '../sheetsStore.js';
+import { listAttendance, listVacations, listWorkers } from '../sheetsStore.js';
 import { currentMonth, monthRange } from '../utils.js';
 
 export const reportsRouter = Router();
@@ -53,8 +53,15 @@ async function buildReportData(query) {
   const end = query.to || monthDates.end;
   const workers = (await listWorkers()).sort((a, b) => a.full_name.localeCompare(b.full_name));
   const records = (await listAttendance()).filter((record) => record.record_date >= start && record.record_date <= end);
+  const vacations = (await listVacations()).filter((vacation) => vacation.end_date >= start && vacation.start_date <= end);
   const reportWorkers = workerId ? workers.filter((worker) => worker.id === workerId) : workers;
-  const report = reportWorkers.map((worker) => buildWorkerReport(worker, records.filter((record) => record.worker_id === worker.id)));
+  const report = reportWorkers.map((worker) => buildWorkerReport(
+    worker,
+    records.filter((record) => record.worker_id === worker.id),
+    vacations.filter((vacation) => vacation.worker_id === worker.id),
+    start,
+    end
+  ));
   const totals = {
     records: records.length,
     unjustified_absences: records.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
@@ -65,7 +72,7 @@ async function buildReportData(query) {
   return { month, workerId, start, end, workers, report, totals, exportQuery };
 }
 
-function buildWorkerReport(worker, records) {
+function buildWorkerReport(worker, records, vacations, start, end) {
   return {
     id: worker.id,
     full_name: worker.full_name,
@@ -76,9 +83,24 @@ function buildWorkerReport(worker, records) {
     unjustified_absences: count(records, 'FALTA INJUSTIFICADA'),
     late_count: count(records, 'ATRASO'),
     late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
-    vacation_days: count(records, 'VACACIONES'),
+    vacation_days: count(records, 'VACACIONES') + vacations.reduce((sum, vacation) => sum + overlappingDays(vacation.start_date, vacation.end_date, start, end), 0),
     permits: count(records, 'PERMISO')
   };
+}
+
+function overlappingDays(startA, endA, startB, endB) {
+  const start = new Date(`${maxDate(startA, startB)}T00:00:00`);
+  const end = new Date(`${minDate(endA, endB)}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+  return Math.floor((end - start) / 86400000) + 1;
+}
+
+function maxDate(a, b) {
+  return a > b ? a : b;
+}
+
+function minDate(a, b) {
+  return a < b ? a : b;
 }
 
 function count(records, status) {
