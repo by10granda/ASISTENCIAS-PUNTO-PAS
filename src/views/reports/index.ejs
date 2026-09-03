@@ -11,10 +11,13 @@
 
 <section class="cards compact">
   <article class="card"><span>Total registros</span><strong><%= totals.records || 0 %></strong></article>
+  <article class="card success"><span>Dias trabajados</span><strong><%= totals.worked_days || 0 %></strong></article>
   <article class="card"><span>Faltas justificadas</span><strong><%= totals.justified_absences || 0 %></strong></article>
   <article class="card danger"><span>Faltas injustificadas</span><strong><%= totals.unjustified_absences || 0 %></strong></article>
   <article class="card warning"><span>Atrasos</span><strong><%= totals.late_count || 0 %></strong></article>
   <article class="card"><span>Minutos atraso</span><strong><%= totals.late_minutes || 0 %></strong></article>
+  <article class="card"><span>Vacaciones</span><strong><%= totals.vacation_days || 0 %></strong></article>
+  <article class="card"><span>Permisos</span><strong><%= totals.permits || 0 %></strong></article>
   <article class="card"><span>Llamados atencion</span><strong><%= totals.attention_calls || 0 %></strong></article>
   <article class="card danger"><span>Abandonos trabajo</span><strong><%= totals.job_abandonments || 0 %></strong></article>
 </section>

@@ -59,10 +59,6 @@ async function buildReportData(query) {
   const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
   const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
   const reportWorkers = workerId ? workers.filter((worker) => worker.id === workerId) : workers;
-  const selectedWorkerIds = new Set(reportWorkers.map((worker) => worker.id));
-  const totalRecords = records.filter((record) => selectedWorkerIds.has(record.worker_id));
-  const totalAttentionCalls = attentionCalls.filter((record) => selectedWorkerIds.has(record.worker_id));
-  const totalJobAbandonments = jobAbandonments.filter((record) => selectedWorkerIds.has(record.worker_id));
   const report = reportWorkers.map((worker) => buildWorkerReport(
     worker,
     records.filter((record) => record.worker_id === worker.id),
@@ -72,17 +68,29 @@ async function buildReportData(query) {
     start,
     end
   ));
-  const totals = {
-    records: totalRecords.length,
-    justified_absences: totalRecords.filter((record) => record.status === 'FALTA JUSTIFICADA').length,
-    unjustified_absences: totalRecords.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
-    late_count: totalRecords.filter((record) => record.status === 'ATRASO').length,
-    late_minutes: totalRecords.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
-    attention_calls: totalAttentionCalls.length,
-    job_abandonments: totalJobAbandonments.length
-  };
+  const totals = buildTotals(report);
   const exportQuery = new URLSearchParams({ worker_id: workerId, from: start, to: end }).toString();
   return { month, workerId, start, end, workers, report, totals, exportQuery };
+}
+
+function buildTotals(report) {
+  const totals = {
+    worked_days: sum(report, 'worked_days'),
+    justified_absences: sum(report, 'justified_absences'),
+    unjustified_absences: sum(report, 'unjustified_absences'),
+    late_count: sum(report, 'late_count'),
+    late_minutes: sum(report, 'late_minutes'),
+    vacation_days: sum(report, 'vacation_days'),
+    permits: sum(report, 'permits'),
+    attention_calls: sum(report, 'attention_calls'),
+    job_abandonments: sum(report, 'job_abandonments')
+  };
+  totals.records = totals.worked_days + totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments;
+  return totals;
+}
+
+function sum(rows, field) {
+  return rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
 }
 
 function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbandonments, start, end) {
