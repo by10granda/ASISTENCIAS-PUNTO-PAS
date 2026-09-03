@@ -1,3 +1,5 @@
+import PDFDocument from 'pdfkit';
+
 export function sendExcel(res, filename, title, columns, rows) {
   const tableRows = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(value(row[column.key]))}</td>`).join('')}</tr>`).join('');
   const html = `
@@ -18,48 +20,15 @@ export function sendExcel(res, filename, title, columns, rows) {
 }
 
 export function sendPdf(res, filename, title, columns, rows) {
-  const lines = [title, '', columns.map((column) => column.header).join(' | ')];
-  rows.forEach((row) => lines.push(columns.map((column) => value(row[column.key])).join(' | ')));
-  if (!rows.length) lines.push('No hay datos para exportar.');
-
-  const pdf = createSimplePdf(lines);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
-  res.end(pdf);
-}
 
-function createSimplePdf(lines) {
-  const objects = [];
-  const content = buildPdfContent(lines);
-  objects.push('<< /Type /Catalog /Pages 2 0 R >>');
-  objects.push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-  objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>');
-  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  objects.push(`<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`);
-
-  let pdf = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(pdf, 'latin1'));
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
-  const xrefOffset = Buffer.byteLength(pdf, 'latin1');
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => pdf += `${String(offset).padStart(10, '0')} 00000 n \n`);
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-  return Buffer.from(pdf, 'latin1');
-}
-
-function buildPdfContent(lines) {
-  const visibleLines = lines.flatMap((line) => splitLine(String(line), 150)).slice(0, 32);
-  const text = visibleLines.map((line, index) => `BT /F1 ${index === 0 ? 16 : 8} Tf 32 ${560 - index * 16} Td (${escapePdf(line)}) Tj ET`).join('\n');
-  return text;
-}
-
-function splitLine(line, size) {
-  const chunks = [];
-  for (let index = 0; index < line.length; index += size) chunks.push(line.slice(index, index + size));
-  return chunks.length ? chunks : [''];
+  const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 28 });
+  doc.pipe(res);
+  drawHeader(doc, title);
+  drawTable(doc, columns, rows);
+  drawFooter(doc);
+  doc.end();
 }
 
 function value(input) {
@@ -70,6 +39,70 @@ function escapeHtml(input) {
   return String(input).replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
 
-function escapePdf(input) {
-  return String(input).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '').replace(/[()\\]/g, '\\$&');
+function drawHeader(doc, title) {
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc.rect(left, 24, width, 54).fill('#10192d');
+  doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text('Control de Asistencia', left + 18, 38);
+  doc.fontSize(9).font('Helvetica').fillColor('#d9e1f2').text(title, left + 18, 60);
+  doc.fillColor('#172033').fontSize(8).text(`Generado: ${new Date().toLocaleString('es-EC')}`, left, 90, { align: 'right', width });
+  doc.moveDown(2.2);
+}
+
+function drawTable(doc, columns, rows) {
+  const left = doc.page.margins.left;
+  const tableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const normalized = normalizeColumns(columns, tableWidth);
+  let y = 112;
+  drawTableHeader(doc, normalized, left, y);
+  y += 28;
+
+  if (!rows.length) {
+    doc.fillColor('#68758d').fontSize(10).text('No hay datos para exportar.', left, y + 16, { width: tableWidth, align: 'center' });
+    return;
+  }
+
+  rows.forEach((row, index) => {
+    if (y > doc.page.height - 58) {
+      drawFooter(doc);
+      doc.addPage();
+      drawHeader(doc, 'Continuacion');
+      y = 112;
+      drawTableHeader(doc, normalized, left, y);
+      y += 28;
+    }
+    drawTableRow(doc, normalized, row, left, y, index);
+    y += 28;
+  });
+}
+
+function drawTableHeader(doc, columns, left, y) {
+  let x = left;
+  doc.rect(left, y, columns.reduce((sum, column) => sum + column.pdfWidth, 0), 26).fill('#2454d6');
+  columns.forEach((column) => {
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(6.5).text(column.header.toUpperCase(), x + 4, y + 8, { width: column.pdfWidth - 8, height: 14, ellipsis: true });
+    x += column.pdfWidth;
+  });
+}
+
+function drawTableRow(doc, columns, row, left, y, index) {
+  let x = left;
+  const rowColor = index % 2 === 0 ? '#ffffff' : '#f6f8fc';
+  doc.rect(left, y, columns.reduce((sum, column) => sum + column.pdfWidth, 0), 28).fill(rowColor).strokeColor('#e5eaf2').stroke();
+  columns.forEach((column) => {
+    doc.fillColor('#172033').font('Helvetica').fontSize(7).text(value(row[column.key]), x + 4, y + 7, { width: column.pdfWidth - 8, height: 16, ellipsis: true });
+    doc.moveTo(x, y).lineTo(x, y + 28).strokeColor('#e5eaf2').stroke();
+    x += column.pdfWidth;
+  });
+  doc.moveTo(x, y).lineTo(x, y + 28).strokeColor('#e5eaf2').stroke();
+}
+
+function drawFooter(doc) {
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc.fontSize(7).fillColor('#68758d').text('Documento generado automaticamente por el sistema de Control de Asistencia.', doc.page.margins.left, doc.page.height - 28, { width, align: 'center' });
+}
+
+function normalizeColumns(columns, tableWidth) {
+  const total = columns.reduce((sum, column) => sum + (column.width || 18), 0);
+  return columns.map((column) => ({ ...column, pdfWidth: ((column.width || 18) / total) * tableWidth }));
 }
