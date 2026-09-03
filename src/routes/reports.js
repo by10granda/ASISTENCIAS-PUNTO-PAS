@@ -59,6 +59,10 @@ async function buildReportData(query) {
   const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
   const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
   const reportWorkers = workerId ? workers.filter((worker) => worker.id === workerId) : workers;
+  const selectedWorkerIds = new Set(reportWorkers.map((worker) => worker.id));
+  const totalRecords = records.filter((record) => selectedWorkerIds.has(record.worker_id));
+  const totalAttentionCalls = attentionCalls.filter((record) => selectedWorkerIds.has(record.worker_id));
+  const totalJobAbandonments = jobAbandonments.filter((record) => selectedWorkerIds.has(record.worker_id));
   const report = reportWorkers.map((worker) => buildWorkerReport(
     worker,
     records.filter((record) => record.worker_id === worker.id),
@@ -69,12 +73,12 @@ async function buildReportData(query) {
     end
   ));
   const totals = {
-    records: records.length,
-    unjustified_absences: records.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
-    late_count: records.filter((record) => record.status === 'ATRASO').length,
-    late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
-    attention_calls: attentionCalls.length,
-    job_abandonments: jobAbandonments.length
+    records: totalRecords.length,
+    unjustified_absences: totalRecords.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
+    late_count: totalRecords.filter((record) => record.status === 'ATRASO').length,
+    late_minutes: totalRecords.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
+    attention_calls: totalAttentionCalls.length,
+    job_abandonments: totalJobAbandonments.length
   };
   const exportQuery = new URLSearchParams({ worker_id: workerId, from: start, to: end }).toString();
   return { month, workerId, start, end, workers, report, totals, exportQuery };
