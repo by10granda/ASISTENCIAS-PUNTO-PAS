@@ -74,6 +74,7 @@ async function buildReportData(query) {
   ));
   const totals = {
     records: totalRecords.length,
+    justified_absences: totalRecords.filter((record) => record.status === 'FALTA JUSTIFICADA').length,
     unjustified_absences: totalRecords.filter((record) => record.status === 'FALTA INJUSTIFICADA').length,
     late_count: totalRecords.filter((record) => record.status === 'ATRASO').length,
     late_minutes: totalRecords.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
