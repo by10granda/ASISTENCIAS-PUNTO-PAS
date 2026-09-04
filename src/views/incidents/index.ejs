@@ -2,6 +2,19 @@
 <%- include('../partials/errors') %>
 
 <section class="panel">
+  <div class="section-title">
+    <div>
+      <h2>Descargar novedades</h2>
+      <p>Exporta llamados de atencion y abandonos de trabajo en un solo archivo.</p>
+    </div>
+    <div class="export-actions">
+      <a class="button ghost" href="/novedades/excel">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf">Descargar PDF</a>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
   <h2>Registrar llamado de atencion</h2>
   <form method="post" action="/novedades/llamados" class="form-grid confirm-important">
     <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %></option><% }) %></select></label>

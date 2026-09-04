@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { sendExcel, sendPdf } from '../exporters.js';
 import {
   createAttentionCall,
   createJobAbandonment,
@@ -11,10 +12,40 @@ import { clean, requireText, today } from '../utils.js';
 
 export const incidentsRouter = Router();
 
+const incidentColumns = [
+  { header: 'Tipo', key: 'type', width: 22 },
+  { header: 'Fecha', key: 'record_date', width: 14 },
+  { header: 'Trabajador', key: 'full_name', width: 28 },
+  { header: 'Hora salida', key: 'exit_time', width: 12 },
+  { header: 'Motivo', key: 'reason', width: 28 },
+  { header: 'Detalle', key: 'detail', width: 36 },
+  { header: 'Observacion', key: 'observation', width: 30 },
+  { header: 'Usuario', key: 'registered_by', width: 18 },
+  { header: 'Registrado', key: 'created_at', width: 20 }
+];
+
 incidentsRouter.get('/', async (req, res, next) => {
   try {
     const data = await incidentViewData();
     res.render('incidents/index', { title: 'Novedades', ...data, errors: [] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+incidentsRouter.get('/excel', async (req, res, next) => {
+  try {
+    const data = await incidentViewData();
+    sendExcel(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
+  } catch (error) {
+    next(error);
+  }
+});
+
+incidentsRouter.get('/pdf', async (req, res, next) => {
+  try {
+    const data = await incidentViewData();
+    sendPdf(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
   } catch (error) {
     next(error);
   }
@@ -93,4 +124,30 @@ async function validateJobAbandonment(record) {
   if (!requireText(record.record_date)) errors.push('Ingrese la fecha del abandono de trabajo.');
   if (!requireText(record.reason)) errors.push('Ingrese el motivo o detalle del abandono de trabajo.');
   return errors;
+}
+
+function buildExportRows(data) {
+  const attentionRows = data.attentionCalls.map((record) => ({
+    type: 'Llamado de atencion',
+    record_date: record.record_date,
+    full_name: record.full_name,
+    exit_time: '',
+    reason: record.reason,
+    detail: record.description,
+    observation: '',
+    registered_by: record.registered_by,
+    created_at: record.created_at
+  }));
+  const abandonmentRows = data.jobAbandonments.map((record) => ({
+    type: 'Abandono de trabajo',
+    record_date: record.record_date,
+    full_name: record.full_name,
+    exit_time: record.exit_time,
+    reason: record.reason,
+    detail: record.reason,
+    observation: record.observation,
+    registered_by: record.registered_by,
+    created_at: record.created_at
+  }));
+  return [...attentionRows, ...abandonmentRows].sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
 }
