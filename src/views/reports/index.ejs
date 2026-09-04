@@ -4,6 +4,7 @@
   <form method="get" class="filters">
     <label>Desde<input type="date" name="from" value="<%= start %>"></label>
     <label>Hasta<input type="date" name="to" value="<%= end %>"></label>
+    <label>Sucursal/area<select name="branch"><option value="">Todas</option><% branches.forEach((item) => { %><option value="<%= item %>" <%= branch === item ? 'selected' : '' %>><%= item %></option><% }) %></select></label>
     <label>Trabajador<select name="worker_id"><option value="">Reporte general</option><% workers.forEach((w) => { %><option value="<%= w.id %>" <%= workerId == w.id ? 'selected' : '' %>><%= w.full_name %></option><% }) %></select></label>
     <button>Generar reporte</button>
   </form>

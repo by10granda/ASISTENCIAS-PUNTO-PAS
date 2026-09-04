@@ -50,15 +50,21 @@ reportsRouter.get('/pdf', async (req, res, next) => {
 async function buildReportData(query) {
   const month = currentMonth();
   const workerId = query.worker_id || '';
+  const branch = query.branch || '';
   const monthDates = monthRange(month);
   const start = query.from || monthDates.start;
   const end = query.to || monthDates.end;
   const workers = (await listWorkers()).sort((a, b) => a.full_name.localeCompare(b.full_name));
+  const branches = [...new Set(workers.map((worker) => worker.branch).filter(Boolean))].sort();
   const records = (await listAttendance()).filter((record) => record.record_date >= start && record.record_date <= end);
   const vacations = (await listVacations()).filter((vacation) => vacation.end_date >= start && vacation.start_date <= end);
   const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
   const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
-  const reportWorkers = workerId ? workers.filter((worker) => worker.id === workerId) : workers;
+  const reportWorkers = workers.filter((worker) => {
+    if (workerId && worker.id !== workerId) return false;
+    if (branch && worker.branch !== branch) return false;
+    return true;
+  });
   const report = reportWorkers.map((worker) => buildWorkerReport(
     worker,
     records.filter((record) => record.worker_id === worker.id),
@@ -69,8 +75,8 @@ async function buildReportData(query) {
     end
   ));
   const totals = buildTotals(report);
-  const exportQuery = new URLSearchParams({ worker_id: workerId, from: start, to: end }).toString();
-  return { month, workerId, start, end, workers, report, totals, exportQuery };
+  const exportQuery = new URLSearchParams({ worker_id: workerId, branch, from: start, to: end }).toString();
+  return { month, workerId, branch, branches, start, end, workers, report, totals, exportQuery };
 }
 
 function buildTotals(report) {
