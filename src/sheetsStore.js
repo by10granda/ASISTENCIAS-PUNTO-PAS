@@ -28,6 +28,10 @@ const sheetsConfig = {
   jobAbandonments: {
     name: 'job_abandonments',
     headers: ['id', 'worker_id', 'record_date', 'exit_time', 'reason', 'observation', 'registered_by', 'created_at', 'updated_at']
+  },
+  medicalWithdrawals: {
+    name: 'medical_withdrawals',
+    headers: ['id', 'worker_id', 'record_date', 'exit_time', 'cause', 'description', 'has_support_doc', 'registered_by', 'created_at', 'updated_at']
   }
 };
 
@@ -107,10 +111,12 @@ export async function deleteWorkerAndData(id) {
   const vacations = await readRowsWithNumbers(sheetsConfig.vacations);
   const attentionCalls = await readRowsWithNumbers(sheetsConfig.attentionCalls);
   const jobAbandonments = await readRowsWithNumbers(sheetsConfig.jobAbandonments);
+  const medicalWithdrawals = await readRowsWithNumbers(sheetsConfig.medicalWithdrawals);
   await deleteRows(sheetsConfig.attendance, attendance.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.vacations, vacations.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.attentionCalls, attentionCalls.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.jobAbandonments, jobAbandonments.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.medicalWithdrawals, medicalWithdrawals.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.workers, [worker.rowNumber]);
   return true;
 }
@@ -158,6 +164,16 @@ export async function createJobAbandonment(record) {
   const records = await listJobAbandonments();
   const now = timestamp();
   await appendRow(sheetsConfig.jobAbandonments, { ...record, id: nextId(records), created_at: now, updated_at: now });
+}
+
+export async function listMedicalWithdrawals() {
+  return readRows(sheetsConfig.medicalWithdrawals);
+}
+
+export async function createMedicalWithdrawal(record) {
+  const records = await listMedicalWithdrawals();
+  const now = timestamp();
+  await appendRow(sheetsConfig.medicalWithdrawals, { ...record, id: nextId(records), created_at: now, updated_at: now });
 }
 
 async function readRows(config) {

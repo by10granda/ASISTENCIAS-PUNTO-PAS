@@ -40,6 +40,20 @@
 </section>
 
 <section class="panel">
+  <h2>Registrar retiro por accidente laboral o enfermedad</h2>
+  <form method="post" action="/novedades/retiros" class="form-grid confirm-important">
+    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %></option><% }) %></select></label>
+    <label>Fecha<input required type="date" name="record_date" value="<%= today %>"></label>
+    <label>Hora de retiro, si aplica<input type="time" name="exit_time"></label>
+    <label>Causa<select required name="cause"><option value="">Seleccione</option><option>Accidente laboral</option><option>Enfermedad</option></select></label>
+    <label>Usuario que registra<input required name="registered_by" value="Administrador"></label>
+    <label class="checkbox"><input type="checkbox" name="has_support_doc"> Tiene documento de respaldo</label>
+    <label class="span-2">Detalle<textarea required name="description" rows="3" placeholder="Detalle del retiro del trabajador"></textarea></label>
+    <div class="actions"><button>Guardar retiro</button></div>
+  </form>
+</section>
+
+<section class="panel">
   <h2>Historial de llamados de atencion</h2>
   <div class="table-wrap">
     <table>
@@ -47,6 +61,19 @@
       <tbody>
         <% if (!attentionCalls.length) { %><tr><td colspan="6" class="empty">No hay llamados de atencion registrados.</td></tr><% } %>
         <% attentionCalls.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.reason %></td><td><%= record.description %></td><td><%= record.registered_by %></td><td><%= record.created_at %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Historial de retiros por accidente laboral o enfermedad</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Hora retiro</th><th>Causa</th><th>Detalle</th><th>Respaldo</th><th>Usuario</th><th>Registrado</th></tr></thead>
+      <tbody>
+        <% if (!medicalWithdrawals.length) { %><tr><td colspan="8" class="empty">No hay retiros registrados.</td></tr><% } %>
+        <% medicalWithdrawals.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.exit_time || '-' %></td><td><%= record.cause %></td><td><%= record.description %></td><td><%= Number(record.has_support_doc) ? 'Si' : 'No' %></td><td><%= record.registered_by %></td><td><%= record.created_at %></td></tr><% }) %>
       </tbody>
     </table>
   </div>

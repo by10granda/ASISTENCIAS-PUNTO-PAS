@@ -16,7 +16,7 @@
 <% if (worker.id) { %>
   <section class="panel narrow danger-zone">
     <h2>Eliminar trabajador definitivamente</h2>
-    <p>Esta accion eliminara al trabajador y todos sus datos relacionados: asistencia, faltas, atrasos, permisos, vacaciones, llamados de atencion y abandonos de trabajo. No se puede deshacer.</p>
+    <p>Esta accion eliminara al trabajador y todos sus datos relacionados: asistencia, faltas, atrasos, permisos, vacaciones, llamados de atencion, abandonos de trabajo y retiros por accidente laboral o enfermedad. No se puede deshacer.</p>
     <form method="post" action="/trabajadores/<%= worker.id %>/delete" class="form-grid delete-worker-form">
       <label class="span-2">Para confirmar escriba ELIMINAR<input required name="confirm_delete" autocomplete="off" placeholder="ELIMINAR"></label>
       <div class="actions"><button class="danger-button" type="submit">Eliminar trabajador y todo su historial</button></div>

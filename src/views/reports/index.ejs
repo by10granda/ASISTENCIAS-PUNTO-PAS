@@ -21,6 +21,7 @@
   <article class="card"><span>Permisos</span><strong><%= totals.permits || 0 %></strong></article>
   <article class="card"><span>Llamados atencion</span><strong><%= totals.attention_calls || 0 %></strong></article>
   <article class="card danger"><span>Abandonos trabajo</span><strong><%= totals.job_abandonments || 0 %></strong></article>
+  <article class="card warning"><span>Retiros accidente/enfermedad</span><strong><%= totals.medical_withdrawals || 0 %></strong></article>
 </section>
 
 <section class="panel">
@@ -33,10 +34,10 @@
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Dias trabajados</th><th>F. justificadas</th><th>F. injustificadas</th><th>Atrasos</th><th>Min. atraso</th><th>Vacaciones</th><th>Permisos</th><th>Llamados atencion</th><th>Abandonos trabajo</th></tr></thead>
+      <thead><tr><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Dias trabajados</th><th>F. justificadas</th><th>F. injustificadas</th><th>Atrasos</th><th>Min. atraso</th><th>Vacaciones</th><th>Permisos</th><th>Llamados atencion</th><th>Abandonos trabajo</th><th>Retiros accidente/enfermedad</th></tr></thead>
       <tbody>
-        <% if (!report.length) { %><tr><td colspan="12" class="empty">No hay datos para el reporte.</td></tr><% } %>
-        <% report.forEach((r) => { %><tr><td><%= r.full_name %></td><td><%= r.cedula %></td><td><%= r.branch %></td><td><%= r.worked_days || 0 %></td><td><%= r.justified_absences || 0 %></td><td><%= r.unjustified_absences || 0 %></td><td><%= r.late_count || 0 %></td><td><%= r.late_minutes || 0 %></td><td><%= r.vacation_days || 0 %></td><td><%= r.permits || 0 %></td><td><%= r.attention_calls || 0 %></td><td><%= r.job_abandonments || 0 %></td></tr><% }) %>
+        <% if (!report.length) { %><tr><td colspan="13" class="empty">No hay datos para el reporte.</td></tr><% } %>
+        <% report.forEach((r) => { %><tr><td><%= r.full_name %></td><td><%= r.cedula %></td><td><%= r.branch %></td><td><%= r.worked_days || 0 %></td><td><%= r.justified_absences || 0 %></td><td><%= r.unjustified_absences || 0 %></td><td><%= r.late_count || 0 %></td><td><%= r.late_minutes || 0 %></td><td><%= r.vacation_days || 0 %></td><td><%= r.permits || 0 %></td><td><%= r.attention_calls || 0 %></td><td><%= r.job_abandonments || 0 %></td><td><%= r.medical_withdrawals || 0 %></td></tr><% }) %>
       </tbody>
     </table>
   </div>

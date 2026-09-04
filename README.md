@@ -29,6 +29,7 @@ El sistema crea automaticamente estas hojas dentro del archivo configurado:
 - `vacations`
 - `attention_calls`
 - `job_abandonments`
+- `medical_withdrawals`
 
 Tambien crea los encabezados necesarios si no existen.
 
@@ -87,7 +88,7 @@ Tambien crea los encabezados necesarios si no existen.
 - Vacaciones: registro de periodos.
 - Historial: filtros por trabajador, fecha, rango, mes, sucursal y tipo.
 - Reportes: reporte mensual individual o general.
-- Novedades: registro de llamados de atencion y abandonos de trabajo por trabajador.
+- Novedades: registro de llamados de atencion, abandonos de trabajo y retiros por accidente laboral o enfermedad por trabajador.
 
 ## Crear credenciales de Google Sheets
 

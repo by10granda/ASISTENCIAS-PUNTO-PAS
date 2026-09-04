@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
-import { listAttendance, listAttentionCalls, listJobAbandonments, listVacations, listWorkers } from '../sheetsStore.js';
+import { listAttendance, listAttentionCalls, listJobAbandonments, listMedicalWithdrawals, listVacations, listWorkers } from '../sheetsStore.js';
 import { currentMonth, monthRange } from '../utils.js';
 
 export const reportsRouter = Router();
@@ -17,7 +17,8 @@ const reportColumns = [
   { header: 'Vacaciones', key: 'vacation_days', width: 14 },
   { header: 'Permisos', key: 'permits', width: 12 },
   { header: 'Llamados atencion', key: 'attention_calls', width: 18 },
-  { header: 'Abandonos trabajo', key: 'job_abandonments', width: 18 }
+  { header: 'Abandonos trabajo', key: 'job_abandonments', width: 18 },
+  { header: 'Retiros accidente/enfermedad', key: 'medical_withdrawals', width: 24 }
 ];
 
 reportsRouter.get('/', async (req, res, next) => {
@@ -60,6 +61,7 @@ async function buildReportData(query) {
   const vacations = (await listVacations()).filter((vacation) => vacation.end_date >= start && vacation.start_date <= end);
   const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
   const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
+  const medicalWithdrawals = (await listMedicalWithdrawals()).filter((record) => record.record_date >= start && record.record_date <= end);
   const reportWorkers = workers.filter((worker) => {
     if (workerId && worker.id !== workerId) return false;
     if (branch && worker.branch !== branch) return false;
@@ -71,6 +73,7 @@ async function buildReportData(query) {
     vacations.filter((vacation) => vacation.worker_id === worker.id),
     attentionCalls.filter((record) => record.worker_id === worker.id),
     jobAbandonments.filter((record) => record.worker_id === worker.id),
+    medicalWithdrawals.filter((record) => record.worker_id === worker.id),
     start,
     end
   ));
@@ -89,9 +92,10 @@ function buildTotals(report) {
     vacation_days: sum(report, 'vacation_days'),
     permits: sum(report, 'permits'),
     attention_calls: sum(report, 'attention_calls'),
-    job_abandonments: sum(report, 'job_abandonments')
+    job_abandonments: sum(report, 'job_abandonments'),
+    medical_withdrawals: sum(report, 'medical_withdrawals')
   };
-  totals.records = totals.worked_days + totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments;
+  totals.records = totals.worked_days + totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments + totals.medical_withdrawals;
   return totals;
 }
 
@@ -99,7 +103,7 @@ function sum(rows, field) {
   return rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
 }
 
-function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbandonments, start, end) {
+function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbandonments, medicalWithdrawals, start, end) {
   return {
     id: worker.id,
     full_name: worker.full_name,
@@ -113,7 +117,8 @@ function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbando
     vacation_days: count(records, 'VACACIONES') + vacations.reduce((sum, vacation) => sum + overlappingDays(vacation.start_date, vacation.end_date, start, end), 0),
     permits: count(records, 'PERMISO'),
     attention_calls: attentionCalls.length,
-    job_abandonments: jobAbandonments.length
+    job_abandonments: jobAbandonments.length,
+    medical_withdrawals: medicalWithdrawals.length
   };
 }
 

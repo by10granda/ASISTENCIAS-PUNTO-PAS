@@ -3,9 +3,11 @@ import { sendExcel, sendPdf } from '../exporters.js';
 import {
   createAttentionCall,
   createJobAbandonment,
+  createMedicalWithdrawal,
   findWorker,
   listAttentionCalls,
   listJobAbandonments,
+  listMedicalWithdrawals,
   listWorkers
 } from '../sheetsStore.js';
 import { clean, requireText, today } from '../utils.js';
@@ -96,6 +98,30 @@ incidentsRouter.post('/abandonos', async (req, res, next) => {
   }
 });
 
+incidentsRouter.post('/retiros', async (req, res, next) => {
+  try {
+    const record = {
+      worker_id: clean(req.body.worker_id),
+      record_date: clean(req.body.record_date),
+      exit_time: clean(req.body.exit_time),
+      cause: ['Accidente laboral', 'Enfermedad'].includes(req.body.cause) ? req.body.cause : '',
+      description: clean(req.body.description),
+      has_support_doc: req.body.has_support_doc ? 1 : 0,
+      registered_by: clean(req.body.registered_by) || 'Administrador'
+    };
+    const errors = await validateMedicalWithdrawal(record);
+    if (errors.length) {
+      const data = await incidentViewData();
+      return res.status(422).render('incidents/index', { title: 'Novedades', ...data, errors });
+    }
+
+    await createMedicalWithdrawal(record);
+    res.redirect('/novedades');
+  } catch (error) {
+    next(error);
+  }
+});
+
 async function incidentViewData() {
   const workers = (await listWorkers()).filter((worker) => worker.status === 'Activo').sort((a, b) => a.full_name.localeCompare(b.full_name));
   const allWorkers = await listWorkers();
@@ -106,7 +132,10 @@ async function incidentViewData() {
   const jobAbandonments = (await listJobAbandonments())
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
-  return { workers, attentionCalls, jobAbandonments, today: today() };
+  const medicalWithdrawals = (await listMedicalWithdrawals())
+    .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .sort((a, b) => b.record_date.localeCompare(a.record_date));
+  return { workers, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
 }
 
 async function validateAttentionCall(record) {
@@ -123,6 +152,15 @@ async function validateJobAbandonment(record) {
   if (!record.worker_id || !(await findWorker(record.worker_id))) errors.push('Seleccione un trabajador valido para el abandono de trabajo.');
   if (!requireText(record.record_date)) errors.push('Ingrese la fecha del abandono de trabajo.');
   if (!requireText(record.reason)) errors.push('Ingrese el motivo o detalle del abandono de trabajo.');
+  return errors;
+}
+
+async function validateMedicalWithdrawal(record) {
+  const errors = [];
+  if (!record.worker_id || !(await findWorker(record.worker_id))) errors.push('Seleccione un trabajador valido para el retiro.');
+  if (!requireText(record.record_date)) errors.push('Ingrese la fecha del retiro.');
+  if (!requireText(record.cause)) errors.push('Seleccione si el retiro fue por accidente laboral o enfermedad.');
+  if (!requireText(record.description)) errors.push('Ingrese el detalle del retiro.');
   return errors;
 }
 
@@ -149,5 +187,16 @@ function buildExportRows(data) {
     registered_by: record.registered_by,
     created_at: record.created_at
   }));
-  return [...attentionRows, ...abandonmentRows].sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
+  const withdrawalRows = data.medicalWithdrawals.map((record) => ({
+    type: `Retiro por ${record.cause}`,
+    record_date: record.record_date,
+    full_name: record.full_name,
+    exit_time: record.exit_time,
+    reason: record.cause,
+    detail: record.description,
+    observation: record.has_support_doc ? 'Con documento de respaldo' : 'Sin documento de respaldo',
+    registered_by: record.registered_by,
+    created_at: record.created_at
+  }));
+  return [...attentionRows, ...abandonmentRows, ...withdrawalRows].sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
 }
