@@ -4,7 +4,7 @@
   <article class="card"><span>Activos</span><strong><%= counts.active_workers || 0 %></strong></article>
   <article class="card success"><span>Presentes hoy</span><strong><%= counts.present_today || 0 %></strong></article>
   <article class="card"><span>Faltas justificadas</span><strong><%= counts.justified_today || 0 %></strong></article>
-  <article class="card danger"><span>Faltas injustificadas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
+  <article class="card danger"><span>Faltas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
   <article class="card warning"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong></article>
   <article class="card"><span>De vacaciones</span><strong><%= (counts.vacation_today || 0) + (vacationRanges.total || 0) %></strong></article>
   <article class="card"><span>Con permiso</span><strong><%= counts.permit_today || 0 %></strong></article>

@@ -11,7 +11,7 @@ const reportColumns = [
   { header: 'Sucursal', key: 'branch', width: 18 },
   { header: 'Dias trabajados', key: 'worked_days', width: 16 },
   { header: 'F. justificadas', key: 'justified_absences', width: 16 },
-  { header: 'F. injustificadas', key: 'unjustified_absences', width: 18 },
+  { header: 'Faltas', key: 'unjustified_absences', width: 12 },
   { header: 'Atrasos', key: 'late_count', width: 12 },
   { header: 'Min. atraso', key: 'late_minutes', width: 14 },
   { header: 'Vacaciones', key: 'vacation_days', width: 14 },
