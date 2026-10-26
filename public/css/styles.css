@@ -69,6 +69,7 @@ button:hover, .button:hover { background: var(--primary-dark); }
 .danger-zone h2 { color: var(--danger); }
 .danger-button { background: var(--danger); }
 .danger-button:hover { background: #a92133; }
+.text-danger { color: var(--danger); }
 
 @media (max-width: 1000px) {
   .sidebar { position: static; width: auto; padding: 16px; }

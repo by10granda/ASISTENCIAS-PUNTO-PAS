@@ -178,6 +178,21 @@ Debe ingresar:
 
 El sistema calcula automaticamente el numero total de dias.
 
+### Saldo de vacaciones
+
+El sistema genera 15 dias calendario por cada ano cumplido desde la fecha de ingreso. Del total generado descuenta las vacaciones `Programadas`, `En curso` y `Finalizadas`.
+
+Los dias no utilizados se acumulan. La tabla de saldos muestra los dias generados, utilizados, dados de baja y disponibles de cada trabajador.
+
+### Dar de baja dias acumulados
+
+1. Seleccione el trabajador.
+2. Ingrese la cantidad de dias.
+3. Indique la fecha, el motivo y el responsable.
+4. Presione `Registrar baja` y confirme la accion.
+
+La baja queda guardada en el historial y no puede superar el saldo disponible.
+
 ## 6. Historial
 
 La pantalla `Historial` permite consultar todos los registros de asistencia y novedades.
@@ -206,7 +221,7 @@ La pantalla `Reportes` permite generar reportes mensuales.
 ### Reporte general
 
 1. Ingrese a `Reportes`.
-2. Seleccione el mes.
+2. Seleccione las fechas desde y hasta.
 3. Deje el campo trabajador en `Reporte general`.
 4. Presione `Generar reporte`.
 
@@ -215,13 +230,12 @@ El reporte muestra todos los trabajadores con sus totales del mes.
 ### Reporte por trabajador
 
 1. Ingrese a `Reportes`.
-2. Seleccione el mes.
+2. Seleccione las fechas desde y hasta.
 3. Seleccione un trabajador.
 4. Presione `Generar reporte`.
 
 El reporte muestra:
 
-- Dias trabajados.
 - Faltas justificadas.
 - Faltas injustificadas.
 - Cantidad de atrasos.
@@ -231,7 +245,7 @@ El reporte muestra:
 
 ## 8. Recomendaciones de uso
 
-- Registrar la asistencia diariamente para mantener el historial actualizado.
+- Registrar atrasos, faltas, vacaciones o permisos cuando exista una novedad.
 - Revisar bien la fecha antes de guardar.
 - Mantener actualizada la lista de trabajadores activos e inactivos.
 - Usar observaciones claras cuando exista una novedad.

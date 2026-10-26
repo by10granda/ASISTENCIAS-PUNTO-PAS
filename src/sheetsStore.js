@@ -21,6 +21,10 @@ const sheetsConfig = {
     name: 'vacations',
     headers: ['id', 'worker_id', 'start_date', 'end_date', 'total_days', 'observation', 'status', 'created_at', 'updated_at']
   },
+  vacationDeductions: {
+    name: 'vacation_deductions',
+    headers: ['id', 'worker_id', 'days', 'reason', 'record_date', 'registered_by', 'created_at', 'updated_at']
+  },
   attentionCalls: {
     name: 'attention_calls',
     headers: ['id', 'worker_id', 'record_date', 'reason', 'description', 'registered_by', 'created_at', 'updated_at']
@@ -109,11 +113,13 @@ export async function deleteWorkerAndData(id) {
 
   const attendance = await readRowsWithNumbers(sheetsConfig.attendance);
   const vacations = await readRowsWithNumbers(sheetsConfig.vacations);
+  const vacationDeductions = await readRowsWithNumbers(sheetsConfig.vacationDeductions);
   const attentionCalls = await readRowsWithNumbers(sheetsConfig.attentionCalls);
   const jobAbandonments = await readRowsWithNumbers(sheetsConfig.jobAbandonments);
   const medicalWithdrawals = await readRowsWithNumbers(sheetsConfig.medicalWithdrawals);
   await deleteRows(sheetsConfig.attendance, attendance.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.vacations, vacations.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
+  await deleteRows(sheetsConfig.vacationDeductions, vacationDeductions.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.attentionCalls, attentionCalls.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.jobAbandonments, jobAbandonments.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
   await deleteRows(sheetsConfig.medicalWithdrawals, medicalWithdrawals.filter((row) => row.worker_id === workerId).map((row) => row.rowNumber));
@@ -144,6 +150,16 @@ export async function createVacation(vacation) {
   const vacations = await listVacations();
   const now = timestamp();
   await appendRow(sheetsConfig.vacations, { ...vacation, id: nextId(vacations), created_at: now, updated_at: now });
+}
+
+export async function listVacationDeductions() {
+  return normalizeNumbers(await readRows(sheetsConfig.vacationDeductions), ['days']);
+}
+
+export async function createVacationDeduction(deduction) {
+  const deductions = await listVacationDeductions();
+  const now = timestamp();
+  await appendRow(sheetsConfig.vacationDeductions, { ...deduction, id: nextId(deductions), created_at: now, updated_at: now });
 }
 
 export async function listAttentionCalls() {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
 import { listAttendance, listAttentionCalls, listJobAbandonments, listMedicalWithdrawals, listVacations, listWorkers } from '../sheetsStore.js';
 import { currentMonth, monthRange } from '../utils.js';
+import { DEDUCTIBLE_VACATION_STATUSES, vacationDaysInRange } from '../vacationPolicy.js';
 
 export const reportsRouter = Router();
 
@@ -9,7 +10,6 @@ const reportColumns = [
   { header: 'Trabajador', key: 'full_name', width: 28 },
   { header: 'Cedula', key: 'cedula', width: 16 },
   { header: 'Sucursal', key: 'branch', width: 18 },
-  { header: 'Dias trabajados', key: 'worked_days', width: 16 },
   { header: 'F. justificadas', key: 'justified_absences', width: 16 },
   { header: 'Faltas', key: 'unjustified_absences', width: 12 },
   { header: 'Atrasos', key: 'late_count', width: 12 },
@@ -58,7 +58,8 @@ async function buildReportData(query) {
   const workers = (await listWorkers()).sort((a, b) => a.full_name.localeCompare(b.full_name));
   const branches = [...new Set(workers.map((worker) => worker.branch).filter(Boolean))].sort();
   const records = (await listAttendance()).filter((record) => record.record_date >= start && record.record_date <= end);
-  const vacations = (await listVacations()).filter((vacation) => vacation.end_date >= start && vacation.start_date <= end);
+  const vacations = (await listVacations()).filter((vacation) => DEDUCTIBLE_VACATION_STATUSES.has(vacation.status)
+    && vacation.end_date >= start && vacation.start_date <= end);
   const attentionCalls = (await listAttentionCalls()).filter((record) => record.record_date >= start && record.record_date <= end);
   const jobAbandonments = (await listJobAbandonments()).filter((record) => record.record_date >= start && record.record_date <= end);
   const medicalWithdrawals = (await listMedicalWithdrawals()).filter((record) => record.record_date >= start && record.record_date <= end);
@@ -84,7 +85,6 @@ async function buildReportData(query) {
 
 function buildTotals(report) {
   const totals = {
-    worked_days: sum(report, 'worked_days'),
     justified_absences: sum(report, 'justified_absences'),
     unjustified_absences: sum(report, 'unjustified_absences'),
     late_count: sum(report, 'late_count'),
@@ -95,7 +95,7 @@ function buildTotals(report) {
     job_abandonments: sum(report, 'job_abandonments'),
     medical_withdrawals: sum(report, 'medical_withdrawals')
   };
-  totals.records = totals.worked_days + totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments + totals.medical_withdrawals;
+  totals.records = totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments + totals.medical_withdrawals;
   return totals;
 }
 
@@ -109,32 +109,16 @@ function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbando
     full_name: worker.full_name,
     cedula: worker.cedula,
     branch: worker.branch,
-    worked_days: count(records, 'ASISTENCIA NORMAL'),
     justified_absences: count(records, 'FALTA JUSTIFICADA'),
     unjustified_absences: count(records, 'FALTA INJUSTIFICADA'),
     late_count: count(records, 'ATRASO'),
     late_minutes: records.reduce((sum, record) => sum + (record.status === 'ATRASO' ? Number(record.late_minutes) || 0 : 0), 0),
-    vacation_days: count(records, 'VACACIONES') + vacations.reduce((sum, vacation) => sum + overlappingDays(vacation.start_date, vacation.end_date, start, end), 0),
+    vacation_days: vacationDaysInRange(records, vacations, start, end),
     permits: count(records, 'PERMISO'),
     attention_calls: attentionCalls.length,
     job_abandonments: jobAbandonments.length,
     medical_withdrawals: medicalWithdrawals.length
   };
-}
-
-function overlappingDays(startA, endA, startB, endB) {
-  const start = new Date(`${maxDate(startA, startB)}T00:00:00`);
-  const end = new Date(`${minDate(endA, endB)}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
-  return Math.floor((end - start) / 86400000) + 1;
-}
-
-function maxDate(a, b) {
-  return a > b ? a : b;
-}
-
-function minDate(a, b) {
-  return a < b ? a : b;
 }
 
 function count(records, status) {
