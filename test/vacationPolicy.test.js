@@ -47,3 +47,14 @@ test('cuenta fechas de vacaciones sin duplicar rangos y registros diarios', () =
   const vacations = [{ start_date: '2026-10-01', end_date: '2026-10-03' }];
   assert.equal(vacationDaysInRange(records, vacations, '2026-10-01', '2026-10-31'), 3);
 });
+
+test('no descuenta dos veces periodos de vacaciones superpuestos', () => {
+  const worker = { id: '1', hire_date: '2025-01-01' };
+  const vacations = [
+    { worker_id: '1', start_date: '2026-09-10', end_date: '2026-09-17', status: 'En curso' },
+    { worker_id: '1', start_date: '2026-09-10', end_date: '2026-09-16', status: 'Finalizadas' }
+  ];
+  const balance = vacationBalance(worker, vacations, [], '2026-10-26');
+  assert.equal(balance.used_days, 8);
+  assert.equal(balance.available_days, 7);
+});
