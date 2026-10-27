@@ -9,6 +9,10 @@ const sheetsConfig = {
     name: 'workers',
     headers: ['id', 'full_name', 'cedula', 'position', 'branch', 'hire_date', 'status', 'created_at', 'updated_at']
   },
+  branches: {
+    name: 'branches',
+    headers: ['id', 'name', 'created_at', 'updated_at']
+  },
   attendance: {
     name: 'attendance_records',
     headers: [
@@ -94,6 +98,17 @@ export async function createWorker(worker) {
   if (workers.some((item) => item.cedula === worker.cedula)) throw new Error('DUPLICATE_CEDULA');
   const now = timestamp();
   await appendRow(sheetsConfig.workers, { ...worker, id: nextId(workers), created_at: now, updated_at: now });
+}
+
+export async function listBranches() {
+  return readRows(sheetsConfig.branches);
+}
+
+export async function createBranch(name) {
+  const branches = await listBranches();
+  if (branches.some((branch) => branch.name.toLocaleLowerCase('es') === name.toLocaleLowerCase('es'))) throw new Error('DUPLICATE_BRANCH');
+  const now = timestamp();
+  await appendRow(sheetsConfig.branches, { id: nextId(branches), name, created_at: now, updated_at: now });
 }
 
 export async function updateWorker(id, worker) {

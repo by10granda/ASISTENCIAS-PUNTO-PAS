@@ -56,6 +56,12 @@ Tambien muestra un resumen mensual agrupado por tipo de novedad.
 5. Presione `Guardar`.
 6. Confirme la accion.
 
+### Seleccionar o agregar sucursal
+
+Al registrar o editar un trabajador, seleccione su sucursal o area de la lista. Las opciones se obtienen de los trabajadores actuales y de las sucursales agregadas al catalogo.
+
+Si necesita una nueva, use el formulario `Anadir sucursal o area`, ingrese el nombre y presione `Agregar sucursal`. Agreguela antes de completar los datos del trabajador, porque la pagina se recarga. No se permiten nombres duplicados, aunque cambien las mayusculas.
+
 ### Activar o desactivar trabajador
 
 1. Ingrese a `Trabajadores`.

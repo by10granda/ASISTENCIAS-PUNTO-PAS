@@ -6,10 +6,19 @@
     <label>Nombres y apellidos<input required name="full_name" value="<%= worker.full_name || '' %>"></label>
     <label>Cedula<input required name="cedula" value="<%= worker.cedula || '' %>"></label>
     <label>Cargo<input required name="position" value="<%= worker.position || '' %>"></label>
-    <label>Sucursal o area<input required name="branch" value="<%= worker.branch || '' %>"></label>
+    <label>Sucursal o area<select required name="branch"><option value="">Seleccione</option><% branches.forEach((branch) => { %><option value="<%= branch %>" <%= worker.branch === branch ? 'selected' : '' %>><%= branch %></option><% }) %></select></label>
     <label>Fecha de ingreso<input required type="date" name="hire_date" value="<%= worker.hire_date || '' %>"></label>
     <label>Estado<select name="status"><option <%= worker.status !== 'Inactivo' ? 'selected' : '' %>>Activo</option><option <%= worker.status === 'Inactivo' ? 'selected' : '' %>>Inactivo</option></select></label>
     <div class="actions"><a class="button ghost" href="/trabajadores">Cancelar</a><button>Guardar</button></div>
+  </form>
+</section>
+
+<section class="panel narrow">
+  <h2>Anadir sucursal o area</h2>
+  <form method="post" action="/trabajadores/branches" class="form-grid confirm-important">
+    <input type="hidden" name="return_to" value="<%= worker.id ? `/trabajadores/${worker.id}/edit` : '/trabajadores/new' %>">
+    <label class="span-2">Nombre de la nueva sucursal o area<input required name="branch_name"></label>
+    <div class="actions"><button>Agregar sucursal</button></div>
   </form>
 </section>
 
