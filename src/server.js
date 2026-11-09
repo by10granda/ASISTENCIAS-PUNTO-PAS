@@ -9,7 +9,7 @@ import { reportsRouter } from './routes/reports.js';
 import { vacationsRouter } from './routes/vacations.js';
 import { workersRouter } from './routes/workers.js';
 import { initStore, listAttendance, listVacations, listWorkers, listVacationDeductions } from './store.js';
-import { currentMonth, monthRange, today } from './utils.js';
+import { currentMonth, monthRange, today, attendanceStatuses } from './utils.js';
 import { vacationBalance } from './vacationPolicy.js';
 
 const app = express();
