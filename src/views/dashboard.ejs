@@ -63,8 +63,14 @@
 <% if (lowVacation && lowVacation.length) { %>
 <section class="panel danger-zone">
   <div class="section-title">
-    <h2>Atencion: saldo de vacaciones bajo o negativo</h2>
-    <p>Estos trabajadores ya consumieron sus dias disponibles al <%= balanceDate %>.</p>
+    <div>
+      <h2>Atencion: saldo de vacaciones bajo o negativo</h2>
+      <p>Estos trabajadores ya consumieron sus dias disponibles al <%= balanceDate %>.</p>
+    </div>
+    <div class="export-actions">
+      <a class="button ghost" href="/panel/excel?table=saldo<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/panel/pdf?table=saldo<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar PDF</a>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
@@ -106,7 +112,11 @@
 <section class="panel">
   <div class="section-title">
     <h2>Resumen mensual <%= month %></h2>
-    <a class="button" href="/reportes?month=<%= month %>">Ver reportes</a>
+    <div class="export-actions">
+      <a class="button ghost" href="/panel/excel?table=resumen<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/panel/pdf?table=resumen<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar PDF</a>
+      <a class="button" href="/reportes?month=<%= month %>">Ver reportes</a>
+    </div>
   </div>
   <div class="table-wrap">
     <table>

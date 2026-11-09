@@ -68,7 +68,13 @@
 </section>
 
 <section class="panel">
-  <h2>Historial de faltas justificadas e injustificadas (con certificado)</h2>
+  <div class="section-title">
+    <h2>Historial de faltas justificadas e injustificadas (con certificado)</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/novedades/excel?table=faltas<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf?table=faltas<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Fecha</th><th>Trabajador</th><th>Sucursal</th><th>Tipo</th><th>Motivo</th><th>Certificado</th><th>Usuario</th></tr></thead>
@@ -89,7 +95,13 @@
 </section>
 
 <section class="panel">
-  <h2>Historial de llamados de atencion</h2>
+  <div class="section-title">
+    <h2>Historial de llamados de atencion</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/novedades/excel?table=llamados<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf?table=llamados<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Fecha</th><th>Trabajador</th><th>Motivo</th><th>Descripcion</th><th>Usuario</th><th>Registrado</th></tr></thead>
@@ -102,7 +114,13 @@
 </section>
 
 <section class="panel">
-  <h2>Historial de retiros por accidente laboral o enfermedad</h2>
+  <div class="section-title">
+    <h2>Historial de retiros por accidente laboral o enfermedad</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/novedades/excel?table=retiros<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf?table=retiros<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Fecha</th><th>Trabajador</th><th>Hora retiro</th><th>Causa</th><th>Detalle</th><th>Respaldo</th><th>Usuario</th><th>Registrado</th></tr></thead>
@@ -115,7 +133,13 @@
 </section>
 
 <section class="panel">
-  <h2>Historial de abandonos de trabajo</h2>
+  <div class="section-title">
+    <h2>Historial de abandonos de trabajo</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/novedades/excel?table=abandonos<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf?table=abandonos<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Fecha</th><th>Trabajador</th><th>Hora salida</th><th>Motivo</th><th>Observacion</th><th>Usuario</th><th>Registrado</th></tr></thead>

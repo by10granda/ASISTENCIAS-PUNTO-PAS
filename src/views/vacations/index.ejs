@@ -20,10 +20,14 @@
       <p>15 dias calendario por cada ano cumplido desde la fecha de ingreso.</p>
       <% if (typeof branch !== 'undefined' && branch) { %><p>Filtrado por <strong><%= branch %></strong>. <a href="/vacaciones">Quitar filtro</a></p><% } %>
     </div>
-    <form class="inline-form" method="get">
-      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
-      <button>Aplicar</button>
-    </form>
+    <div class="export-actions">
+      <form class="inline-form" method="get">
+        <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+        <button>Aplicar</button>
+      </form>
+      <a class="button ghost" href="/vacaciones/excel?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/vacaciones/pdf?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
@@ -37,7 +41,13 @@
 </section>
 
 <section class="panel">
-  <h2>Historial de vacaciones</h2>
+  <div class="section-title">
+    <h2>Historial de vacaciones</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/vacaciones/excel?table=historial<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/vacaciones/pdf?table=historial<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Dias</th><th>Estado</th><th>Observacion</th></tr></thead>

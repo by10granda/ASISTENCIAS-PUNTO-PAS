@@ -1,15 +1,65 @@
 import { Router } from 'express';
+import { sendExcel, sendPdf } from '../exporters.js';
 import { createVacation, findWorker, listVacations, listWorkers } from '../store.js';
 import { clean, daysInclusive, isValidDate, requireText, today } from '../utils.js';
 import { vacationBalance } from '../vacationPolicy.js';
 
 export const vacationsRouter = Router();
 
+const vacationBalanceColumns = [
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Ingreso', key: 'hire_date', width: 12 },
+  { header: 'Anos cumplidos', key: 'completed_years', width: 10 },
+  { header: 'Generados', key: 'earned_days', width: 10 },
+  { header: 'Usados/programados', key: 'used_days', width: 12 },
+  { header: 'Disponibles', key: 'available_days', width: 10 }
+];
+
+const vacationHistoryColumns = [
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Inicio', key: 'start_date', width: 12 },
+  { header: 'Fin', key: 'end_date', width: 12 },
+  { header: 'Dias', key: 'total_days', width: 8 },
+  { header: 'Estado', key: 'status', width: 12 },
+  { header: 'Observacion', key: 'observation', width: 30 }
+];
+
 vacationsRouter.get('/', async (req, res, next) => {
   try {
     const branch = clean(req.query.branch);
     const data = await vacationViewData(branch);
-    res.render('vacations/index', { title: 'Vacaciones', branch, ...data, errors: [] });
+    const exportQuery = new URLSearchParams(branch ? { branch } : {}).toString();
+    res.render('vacations/index', { title: 'Vacaciones', branch, exportQuery, ...data, errors: [] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+vacationsRouter.get('/excel', async (req, res, next) => {
+  try {
+    const data = await vacationExportData(req.query);
+    if (data.table === 'historial') {
+      sendExcel(res, 'vacaciones-historial', 'Historial de vacaciones', vacationHistoryColumns, data.rows);
+    } else {
+      sendExcel(res, 'vacaciones-saldo', 'Saldo de vacaciones', vacationBalanceColumns, data.rows);
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+vacationsRouter.get('/pdf', async (req, res, next) => {
+  try {
+    const data = await vacationExportData(req.query);
+    if (data.table === 'historial') {
+      sendPdf(res, 'vacaciones-historial', 'Historial de vacaciones', vacationHistoryColumns, data.rows);
+    } else {
+      sendPdf(res, 'vacaciones-saldo', 'Saldo de vacaciones', vacationBalanceColumns, data.rows);
+    }
   } catch (error) {
     next(error);
   }
@@ -67,7 +117,15 @@ async function vacationViewData(branchFilter = '') {
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
   const vacations = vacationRows
     .filter((vacation) => matchBranch(vacation.worker_id))
-    .map((vacation) => ({ ...vacation, full_name: workerMap.get(vacation.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .map((vacation) => {
+      const worker = workerMap.get(vacation.worker_id);
+      return {
+        ...vacation,
+        full_name: worker?.full_name || 'Trabajador no encontrado',
+        cedula: worker?.cedula || '',
+        branch: worker?.branch || ''
+      };
+    })
     .sort((a, b) => b.start_date.localeCompare(a.start_date));
   const balanceDate = today();
   const balances = allWorkers
@@ -75,4 +133,11 @@ async function vacationViewData(branchFilter = '') {
     .map((worker) => ({ ...worker, ...vacationBalance(worker, vacationRows, [], balanceDate) }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
   return { branches, vacations, balances, workers, balanceDate };
+}
+
+async function vacationExportData(query) {
+  const branch = clean(query.branch);
+  const table = clean(query.table) === 'historial' ? 'historial' : 'saldo';
+  const data = await vacationViewData(branch);
+  return { table, rows: table === 'historial' ? data.vacations : data.balances };
 }

@@ -1,26 +1,59 @@
 import { Router } from 'express';
 import { buildBranchNames, includesBranch } from '../branchCatalog.js';
+import { sendExcel, sendPdf } from '../exporters.js';
 import { createBranch, createWorker, deleteWorkerAndData, findWorker, listBranches, listWorkers, updateWorker } from '../store.js';
 import { clean, requireText } from '../utils.js';
 
 export const workersRouter = Router();
 
+const workerColumns = [
+  { header: 'Trabajador', key: 'full_name', width: 28 },
+  { header: 'Cedula', key: 'cedula', width: 16 },
+  { header: 'Cargo', key: 'position', width: 20 },
+  { header: 'Sucursal/area', key: 'branch', width: 18 },
+  { header: 'Ingreso', key: 'hire_date', width: 12 },
+  { header: 'Estado', key: 'status', width: 10 }
+];
+
 workersRouter.get('/', async (req, res, next) => {
   try {
-    const q = clean(req.query.q).toLowerCase();
-    const branch = clean(req.query.branch);
-    const allWorkers = await listWorkers();
-    const branches = await listBranches();
-    const branchNames = [...new Set(allWorkers.map((w) => w.branch).filter(Boolean))].sort();
-    const workers = allWorkers
-      .filter((worker) => !q || [worker.full_name, worker.cedula, worker.position, worker.branch].some((value) => value.toLowerCase().includes(q)))
-      .filter((worker) => !branch || worker.branch === branch)
-      .sort((a, b) => `${a.status}-${a.full_name}`.localeCompare(`${b.status}-${b.full_name}`));
-    res.render('workers/index', { title: 'Trabajadores', workers, q: clean(req.query.q), branch, branches: branchNames });
+    const data = await workerViewData(req.query);
+    res.render('workers/index', { title: 'Trabajadores', ...data });
   } catch (error) {
     next(error);
   }
 });
+
+workersRouter.get('/excel', async (req, res, next) => {
+  try {
+    const data = await workerViewData(req.query);
+    sendExcel(res, 'trabajadores', 'Trabajadores', workerColumns, data.workers);
+  } catch (error) {
+    next(error);
+  }
+});
+
+workersRouter.get('/pdf', async (req, res, next) => {
+  try {
+    const data = await workerViewData(req.query);
+    sendPdf(res, 'trabajadores', 'Trabajadores', workerColumns, data.workers);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function workerViewData(query) {
+  const q = clean(query.q).toLowerCase();
+  const branch = clean(query.branch);
+  const allWorkers = await listWorkers();
+  const branchNames = [...new Set(allWorkers.map((w) => w.branch).filter(Boolean))].sort();
+  const workers = allWorkers
+    .filter((worker) => !q || [worker.full_name, worker.cedula, worker.position, worker.branch].some((value) => value.toLowerCase().includes(q)))
+    .filter((worker) => !branch || worker.branch === branch)
+    .sort((a, b) => `${a.status}-${a.full_name}`.localeCompare(`${b.status}-${b.full_name}`));
+  const exportQuery = new URLSearchParams(Object.entries({ q: clean(query.q), branch }).filter(([, value]) => value)).toString();
+  return { workers, q: clean(query.q), branch, branches: branchNames, exportQuery };
+}
 
 workersRouter.get('/new', async (req, res, next) => {
   try {

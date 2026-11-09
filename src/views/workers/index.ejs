@@ -7,7 +7,11 @@
       <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
       <button>Aplicar</button>
     </form>
-    <a class="button" href="/trabajadores/new">Registrar trabajador</a>
+    <div class="export-actions">
+      <a class="button ghost" href="/trabajadores/excel?<%= exportQuery %>">Descargar Excel</a>
+      <a class="button ghost" href="/trabajadores/pdf?<%= exportQuery %>">Descargar PDF</a>
+      <a class="button" href="/trabajadores/new">Registrar trabajador</a>
+    </div>
   </div>
   <div class="table-wrap">
     <table>

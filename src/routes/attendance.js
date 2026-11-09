@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { sendExcel, sendPdf } from '../exporters.js';
 import {
   findCertificate,
   findWorker,
@@ -16,12 +17,47 @@ export const attendanceRouter = Router();
 const allowedCertificateMimes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const maxCertificateBytes = 10 * 1024 * 1024;
 
+const attendanceColumns = [
+  { header: 'Fecha', key: 'record_date', width: 12 },
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Estado', key: 'status', width: 20 },
+  { header: 'Entrada', key: 'entry_time', width: 10 },
+  { header: 'Hora establecida', key: 'scheduled_entry_time', width: 12 },
+  { header: 'Hora real', key: 'actual_arrival_time', width: 10 },
+  { header: 'Min. atraso', key: 'late_minutes', width: 10 },
+  { header: 'Observacion', key: 'observation', width: 26 },
+  { header: 'Certificado', key: 'certificate', width: 10 },
+  { header: 'Usuario', key: 'registered_by', width: 14 },
+  { header: 'Actualizado', key: 'updated_at', width: 16 }
+];
+
 attendanceRouter.get('/', async (req, res, next) => {
   try {
     const date = clean(req.query.date) || today();
     const branch = clean(req.query.branch);
     const { branches, workers, records } = await attendanceViewData(date, branch);
-    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, branches, workers, records, statuses: attendanceStatuses, errors: [] });
+    const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
+    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, branches, workers, records, statuses: attendanceStatuses, errors: [], exportQuery });
+  } catch (error) {
+    next(error);
+  }
+});
+
+attendanceRouter.get('/excel', async (req, res, next) => {
+  try {
+    const data = await attendanceExportData(req.query);
+    sendExcel(res, `asistencia-${data.date}`, `Registro de asistencia ${data.date}`, attendanceColumns, data.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+attendanceRouter.get('/pdf', async (req, res, next) => {
+  try {
+    const data = await attendanceExportData(req.query);
+    sendPdf(res, `asistencia-${data.date}`, `Registro de asistencia ${data.date}`, attendanceColumns, data.rows);
   } catch (error) {
     next(error);
   }
@@ -91,10 +127,26 @@ async function attendanceViewData(date, branch) {
   const records = allRecords
     .filter((record) => record.record_date === date)
     .filter((record) => !branch || workerBranch.get(record.worker_id) === branch)
-    .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .map((record) => {
+      const worker = workerMap.get(record.worker_id);
+      return {
+        ...record,
+        full_name: worker?.full_name || 'Trabajador no encontrado',
+        cedula: worker?.cedula || '',
+        branch: worker?.branch || '',
+        certificate: Number(record.has_support_doc) ? 'Si' : 'No'
+      };
+    })
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
   const branchNames = [...new Set([...branches.map((branch) => branch.name), ...allWorkers.map((worker) => worker.branch)])].filter(Boolean).sort();
   return { branches: branchNames, workers, records };
+}
+
+async function attendanceExportData(query) {
+  const date = clean(query.date) || today();
+  const branch = clean(query.branch);
+  const { records } = await attendanceViewData(date, branch);
+  return { date, rows: records };
 }
 
 function normalizeAttendance(body) {

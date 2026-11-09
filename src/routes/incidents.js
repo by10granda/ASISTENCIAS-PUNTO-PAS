@@ -27,11 +27,59 @@ const incidentColumns = [
   { header: 'Registrado', key: 'created_at', width: 20 }
 ];
 
+const absenceColumns = [
+  { header: 'Fecha', key: 'record_date', width: 12 },
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Tipo', key: 'type', width: 16 },
+  { header: 'Motivo', key: 'reason', width: 28 },
+  { header: 'Certificado', key: 'certificate', width: 12 },
+  { header: 'Usuario', key: 'registered_by', width: 14 }
+];
+
+const attentionColumns = [
+  { header: 'Fecha', key: 'record_date', width: 12 },
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Motivo', key: 'reason', width: 26 },
+  { header: 'Descripcion', key: 'description', width: 34 },
+  { header: 'Usuario', key: 'registered_by', width: 14 },
+  { header: 'Registrado', key: 'created_at', width: 16 }
+];
+
+const withdrawalColumns = [
+  { header: 'Fecha', key: 'record_date', width: 12 },
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Hora retiro', key: 'exit_time', width: 10 },
+  { header: 'Causa', key: 'cause', width: 14 },
+  { header: 'Detalle', key: 'description', width: 32 },
+  { header: 'Respaldo', key: 'support', width: 12 },
+  { header: 'Usuario', key: 'registered_by', width: 14 },
+  { header: 'Registrado', key: 'created_at', width: 16 }
+];
+
+const abandonmentColumns = [
+  { header: 'Fecha', key: 'record_date', width: 12 },
+  { header: 'Trabajador', key: 'full_name', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'branch', width: 16 },
+  { header: 'Hora salida', key: 'exit_time', width: 10 },
+  { header: 'Motivo', key: 'reason', width: 30 },
+  { header: 'Observacion', key: 'observation', width: 28 },
+  { header: 'Usuario', key: 'registered_by', width: 14 },
+  { header: 'Registrado', key: 'created_at', width: 16 }
+];
+
 incidentsRouter.get('/', async (req, res, next) => {
   try {
     const branch = clean(req.query.branch);
     const data = await incidentViewData(branch);
-    res.render('incidents/index', { title: 'Novedades', branch, ...data, errors: [] });
+    const exportQuery = new URLSearchParams(branch ? { branch } : {}).toString();
+    res.render('incidents/index', { title: 'Novedades', branch, exportQuery, ...data, errors: [] });
   } catch (error) {
     next(error);
   }
@@ -40,7 +88,8 @@ incidentsRouter.get('/', async (req, res, next) => {
 incidentsRouter.get('/excel', async (req, res, next) => {
   try {
     const data = await incidentViewData(clean(req.query.branch));
-    sendExcel(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
+    const exported = incidentExport(clean(req.query.table), data);
+    sendExcel(res, exported.filename, exported.title, exported.columns, exported.rows);
   } catch (error) {
     next(error);
   }
@@ -49,7 +98,8 @@ incidentsRouter.get('/excel', async (req, res, next) => {
 incidentsRouter.get('/pdf', async (req, res, next) => {
   try {
     const data = await incidentViewData(clean(req.query.branch));
-    sendPdf(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
+    const exported = incidentExport(clean(req.query.table), data);
+    sendPdf(res, exported.filename, exported.title, exported.columns, exported.rows);
   } catch (error) {
     next(error);
   }
@@ -141,23 +191,36 @@ async function incidentViewData(branchFilter = '') {
   const absences = attendanceRecords
     .filter((record) => record.status === 'FALTA JUSTIFICADA' || record.status === 'FALTA INJUSTIFICADA')
     .filter((record) => matchBranch(record.worker_id))
-    .map((record) => ({
-      ...record,
-      full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado',
-      branch: workerMap.get(record.worker_id)?.branch || ''
-    }))
+    .map((record) => {
+      const worker = workerMap.get(record.worker_id);
+      return {
+        ...record,
+        full_name: worker?.full_name || 'Trabajador no encontrado',
+        cedula: worker?.cedula || '',
+        branch: worker?.branch || ''
+      };
+    })
     .sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
   const attentionCalls = attentionCallRows
     .filter((record) => matchBranch(record.worker_id))
-    .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .map((record) => {
+      const worker = workerMap.get(record.worker_id);
+      return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };
+    })
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   const jobAbandonments = jobAbandonmentRows
     .filter((record) => matchBranch(record.worker_id))
-    .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .map((record) => {
+      const worker = workerMap.get(record.worker_id);
+      return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };
+    })
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   const medicalWithdrawals = medicalWithdrawalRows
     .filter((record) => matchBranch(record.worker_id))
-    .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
+    .map((record) => {
+      const worker = workerMap.get(record.worker_id);
+      return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };
+    })
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   return { workers, branches, absences, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
 }
@@ -223,4 +286,35 @@ function buildExportRows(data) {
     created_at: record.created_at
   }));
   return [...attentionRows, ...abandonmentRows, ...withdrawalRows].sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
+}
+
+function incidentExport(table, data) {
+  if (table === 'faltas') {
+    return {
+      filename: 'novedades-faltas',
+      title: 'Historial de faltas justificadas e injustificadas',
+      columns: absenceColumns,
+      rows: data.absences.map((record) => ({
+        ...record,
+        type: record.status === 'FALTA JUSTIFICADA' ? 'Justificada' : 'Injustificada',
+        reason: record.justified_reason || record.observation || '',
+        certificate: Number(record.has_support_doc) ? 'Si' : 'No'
+      }))
+    };
+  }
+  if (table === 'llamados') {
+    return { filename: 'novedades-llamados', title: 'Historial de llamados de atencion', columns: attentionColumns, rows: data.attentionCalls };
+  }
+  if (table === 'retiros') {
+    return {
+      filename: 'novedades-retiros',
+      title: 'Historial de retiros por accidente laboral o enfermedad',
+      columns: withdrawalColumns,
+      rows: data.medicalWithdrawals.map((record) => ({ ...record, support: Number(record.has_support_doc) ? 'Si' : 'No' }))
+    };
+  }
+  if (table === 'abandonos') {
+    return { filename: 'novedades-abandonos', title: 'Historial de abandonos de trabajo', columns: abandonmentColumns, rows: data.jobAbandonments };
+  }
+  return { filename: 'novedades-trabajadores', title: 'Novedades de trabajadores', columns: incidentColumns, rows: buildExportRows(data) };
 }

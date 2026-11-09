@@ -37,7 +37,13 @@
 </section>
 
 <section class="panel">
-  <h2>Registros del dia</h2>
+  <div class="section-title">
+    <h2>Registros del dia</h2>
+    <div class="export-actions">
+      <a class="button ghost" href="/asistencia/excel?<%= exportQuery %>">Descargar Excel</a>
+      <a class="button ghost" href="/asistencia/pdf?<%= exportQuery %>">Descargar PDF</a>
+    </div>
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Atraso</th><th>Observacion</th><th>Certificado</th><th>Actualizado</th></tr></thead>
