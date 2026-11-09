@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as db from './dbStore.js';
 
@@ -90,7 +91,7 @@ function safeEqual(received, expected) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url);
+const isDirectRun = path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) {
   if (!token) {
     console.error('Falta STORE_API_TOKEN en el archivo .env. La API no se iniciara.');
