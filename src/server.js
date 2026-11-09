@@ -94,7 +94,80 @@ app.get('/', async (req, res, next) => {
       .map((w) => ({ ...w, ...vacationBalance(w, vacations, deductions, balanceDate) }))
       .filter((b) => b.available_days <= 0)
       .sort((a, b) => a.available_days - b.available_days);
-    res.render('dashboard', { title: 'Panel principal', counts, monthly, month, vacationRanges, summary, lowVacation, balanceDate });
+
+    /* ---- Datos para gráficas mensuales ---- */
+    const workerMap = new Map(workers.map((w) => [String(w.id), w]));
+    const attendanceStatuses = ['ASISTENCIA NORMAL', 'FALTA JUSTIFICADA', 'FALTA INJUSTIFICADA', 'ATRASO', 'VACACIONES', 'PERMISO'];
+
+    // Últimos 6 meses (incluyendo el actual)
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      months.push(`${y}-${m}`);
+    }
+    const monthLabels = months.map((m) => {
+      const [y, mm] = m.split('-');
+      return new Date(Number(y), Number(mm) - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+    });
+    const seriesByMonth = {};
+    attendanceStatuses.forEach((s) => { seriesByMonth[s] = new Array(6).fill(0); });
+    attendance.forEach((record) => {
+      const ym = record.record_date.slice(0, 7);
+      const idx = months.indexOf(ym);
+      if (idx !== -1 && seriesByMonth[record.status] !== undefined) {
+        seriesByMonth[record.status][idx] += 1;
+      }
+    });
+    const chartMonths = {
+      labels: monthLabels,
+      datasets: attendanceStatuses.map((status) => ({
+        label: status,
+        data: seriesByMonth[status],
+        fill: false
+      }))
+    };
+
+    // Top 5 trabajadores con más faltas injustificadas este mes
+    const unjustByWorker = {};
+    monthRecords.filter((r) => r.status === 'FALTA INJUSTIFICADA').forEach((r) => {
+      unjustByWorker[r.worker_id] = (unjustByWorker[r.worker_id] || 0) + 1;
+    });
+    const topUnjustified = Object.entries(unjustByWorker)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([wid, total]) => {
+        const w = workerMap.get(String(wid));
+        return { name: w ? w.full_name : `Trabajador ${wid}`, cedula: w ? w.cedula : '-', total };
+      });
+
+    // Distribución por sucursal este mes
+    const byBranch = {};
+    monthRecords.forEach((r) => {
+      const w = workerMap.get(String(r.worker_id));
+      const branch = w ? w.branch : 'Sin sucursal';
+      byBranch[branch] = (byBranch[branch] || 0) + 1;
+    });
+    const chartBranch = {
+      labels: Object.keys(byBranch),
+      data: Object.values(byBranch)
+    };
+
+    res.render('dashboard', {
+      title: 'Panel principal',
+      counts,
+      monthly,
+      month,
+      vacationRanges,
+      summary,
+      lowVacation,
+      balanceDate,
+      chartMonths,
+      topUnjustified,
+      chartBranch
+    });
   } catch (error) {
     next(error);
   }

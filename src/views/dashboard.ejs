@@ -1,4 +1,31 @@
 <%- include('partials/header') %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .chart-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .chart-card h3 {
+    margin-top: 0;
+    font-size: 1rem;
+    text-align: center;
+    color: #333;
+  }
+  .chart-wrap {
+    position: relative;
+    height: 260px;
+  }
+</style>
 
 <section class="cards">
   <article class="card"><span>Trabajadores activos</span><strong><%= counts.active_workers || 0 %></strong></article>
@@ -28,7 +55,7 @@
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Trabajador</span></th><th>Sucursal</th><th>Generados</th><th>Usados</th><th>Disponibles</th></tr></thead>
+      <thead><tr><th>Trabajador</th><th>Sucursal</th><th>Generados</th><th>Usados</th><th>Disponibles</th></tr></thead>
       <tbody>
         <% lowVacation.forEach((w) => { %><tr><td><%= w.full_name %></td><td><%= w.branch || '-' %></td><td><%= w.earned_days || 0 %></td><td><%= w.used_days || 0 %></td><td><strong class="text-danger"><%= w.available_days || 0 %></strong></td></tr><% }) %>
       </tbody>
@@ -36,6 +63,32 @@
   </div>
 </section>
 <% } %>
+
+<section class="charts-title">
+  <h2>Graficas mensuales - <%= month %></h2>
+</section>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3>Asistencia por estado (ultimos 6 meses)</h3>
+    <div class="chart-wrap"><canvas id="chartMonths"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Top 5 trabajadores - Faltas injustificadas (mes)</h3>
+    <div class="chart-wrap"><canvas id="chartTopUnjust"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Registros por sucursal (mes)</h3>
+    <div class="chart-wrap"><canvas id="chartBranch"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>Resumen por tipo de novedad (mes)</h3>
+    <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
+  </div>
+</div>
 
 <section class="panel">
   <div class="section-title">
@@ -54,5 +107,111 @@
     </table>
   </div>
 </section>
+
+<script>
+  const monthColors = {
+    'ASISTENCIA NORMAL': 'rgba(34, 197, 94, 0.7)',
+    'FALTA JUSTIFICADA': 'rgba(59, 130, 246, 0.7)',
+    'FALTA INJUSTIFICADA': 'rgba(239, 68, 68, 0.7)',
+    'ATRASO': 'rgba(245, 158, 11, 0.7)',
+    'VACACIONES': 'rgba(139, 92, 246, 0.7)',
+    'PERMISO': 'rgba(16, 185, 129, 0.7)'
+  };
+
+  // Grafica 1: Asistencia por estado (últimos 6 meses)
+  new Chart(document.getElementById('chartMonths'), {
+    type: 'bar',
+    data: {
+      labels: <%- JSON.stringify(chartMonths.labels) %>,
+      datasets: <%- JSON.stringify(chartMonths.datasets.map((d, i) => ({
+        label: d.label,
+        data: d.data,
+        backgroundColor: monthColors[d.label] || 'rgba(100, 100, 100, 0.7)',
+        borderColor: monthColors[d.label] || 'rgba(100, 100, 100, 1)',
+        borderWidth: 1
+      }))) %>
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { title: { display: false }, legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+
+  // Grafica 2: Top 5 trabajadores con más faltas injustificadas (mes)
+  new Chart(document.getElementById('chartTopUnjust'), {
+    type: 'bar',
+    data: {
+      labels: <%- JSON.stringify(topUnjustified.map((t) => t.name)) %>,
+      datasets: [{
+        label: 'Faltas injustificadas',
+        data: <%- JSON.stringify(topUnjustified.map((t) => t.total)) %>,
+        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+        borderColor: 'rgba(239, 68, 68, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { title: { display: false }, legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+
+  // Grafica 3: Registros por sucursal (mes) - Donut
+  new Chart(document.getElementById('chartBranch'), {
+    type: 'doughnut',
+    data: {
+      labels: <%- JSON.stringify(chartBranch.labels) %>,
+      datasets: [{
+        data: <%- JSON.stringify(chartBranch.data) %>,
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)',
+          'rgba(34, 197, 94, 0.7)',
+          'rgba(239, 68, 68, 0.7)',
+          'rgba(245, 158, 11, 0.7)',
+          'rgba(139, 92, 246, 0.7)',
+          'rgba(16, 185, 129, 0.7)'
+        ],
+        borderColor: '#fff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { title: { display: false }, legend: { position: 'bottom' } }
+    }
+  });
+
+  // Grafica 4: Resumen por tipo de novedad (mes) - Barras
+  new Chart(document.getElementById('chartMonthly'), {
+    type: 'bar',
+    data: {
+      labels: <%- JSON.stringify(monthly.map((r) => r.status)) %>,
+      datasets: [{
+        label: 'Registros',
+        data: <%- JSON.stringify(monthly.map((r) => r.total)) %>,
+        backgroundColor: monthly.map((r) => {
+          if (r.status === 'FALTA INJUSTIFICADA') return 'rgba(239, 68, 68, 0.7)';
+          if (r.status === 'FALTA JUSTIFICADA') return 'rgba(59, 130, 246, 0.7)';
+          if (r.status === 'ATRASO') return 'rgba(245, 158, 11, 0.7)';
+          if (r.status === 'VACACIONES') return 'rgba(139, 92, 246, 0.7)';
+          if (r.status === 'PERMISO') return 'rgba(16, 185, 129, 0.7)';
+          return 'rgba(34, 197, 94, 0.7)';
+        }),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { title: { display: false }, legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+</script>
 
 <%- include('partials/footer') %>
