@@ -91,7 +91,7 @@
     </div>
   <% } else { %>
     <p class="quick-help">
-      Atajo: <kbd>Marcar pendientes presentes</kbd> llena a todos los no registrados con la hora general; luego solo cambia las excepciones (faltas, atrasos, permisos).
+      Atajo: <kbd>Marcar pendientes presentes</kbd> llena a todos los no registrados con la hora general; luego solo cambia las excepciones (faltas, atrasos, permisos). <kbd>Enter</kbd> en un motivo salta a la siguiente fila.
     </p>
     <form method="post" action="/asistencia/rapido" id="quickForm">
       <input type="hidden" name="record_date" value="<%= date %>">
@@ -149,7 +149,7 @@
                   <input type="hidden" name="row_scheduled" class="quick-row-scheduled" value="<%= r && r.status === 'ATRASO' ? (r.scheduled_entry_time || '') : '' %>">
                 </td>
                 <td class="quick-late"><%= r && r.late_minutes ? `${r.late_minutes} min` : '-' %></td>
-                <td><input type="text" name="observation" class="quick-obs" placeholder="Motivo u observación" value="<%= r ? (r.observation || r.justified_reason || r.permit_reason || '') : '' %>"></td>
+                <td><input type="text" name="observation" class="quick-obs" enterkeyhint="next" autocomplete="off" placeholder="Motivo u observación" value="<%= r ? (r.observation || r.justified_reason || r.permit_reason || '') : '' %>"></td>
                 <td>
                   <% if (r && Number(r.has_support_doc)) { %>
                     <a class="cert-chip" href="/asistencia/certificado?worker_id=<%= w.id %>&record_date=<%= date %>" target="_blank" rel="noopener">Ver</a>

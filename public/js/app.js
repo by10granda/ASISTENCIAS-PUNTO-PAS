@@ -243,6 +243,16 @@ if (quickForm) {
     });
   });
 
+  quickForm.querySelectorAll('.quick-obs').forEach((input) => {
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const rows = quickRows();
+      const next = rows[rows.indexOf(input.closest('tr')) + 1];
+      if (next) next.querySelector('.quick-status')?.focus();
+    });
+  });
+
   quickForm.addEventListener('submit', (event) => {
     const count = quickRows().filter((row) => row.querySelector('.quick-status')?.value).length;
     if (!count) {
