@@ -91,9 +91,6 @@ if (quickForm) {
   const quickScheduled = quickForm.querySelector('#quickScheduled');
   const quickSummary = quickForm.querySelector('#quickSummary');
   const quickExpectedEntry = quickForm.querySelector('#quickExpectedEntry');
-  const quickExpectedLunchOut = quickForm.querySelector('#quickExpectedLunchOut');
-  const quickExpectedLunchIn = quickForm.querySelector('#quickExpectedLunchIn');
-  const quickExpectedExit = quickForm.querySelector('#quickExpectedExit');
   const quickRows = () => [...quickForm.querySelectorAll('tbody tr[data-worker]')];
 
   function timeToMinutes(value) {
@@ -102,25 +99,17 @@ if (quickForm) {
   }
 
   function updateQuickLate(row) {
-    const status = row.querySelector('.quick-status')?.value || '';
     const cell = row.querySelector('.quick-late');
     if (!cell) return;
     const entry = row.querySelector('.quick-time')?.value || '';
-    const lunchOut = row.querySelector('.quick-lunch-out')?.value || '';
-    const lunchIn = row.querySelector('.quick-lunch-in')?.value || '';
     const exit = row.querySelector('.quick-exit-time')?.value || '';
 
-    const expEntry = row.querySelector('.quick-row-expected-entry')?.value || quickExpectedEntry?.value || '07:00';
-    const expLunchOut = row.querySelector('.quick-row-expected-lunch-out')?.value || quickExpectedLunchOut?.value || '13:00';
-    const expLunchIn = row.querySelector('.quick-row-expected-lunch-in')?.value || quickExpectedLunchIn?.value || '14:00';
-    const expExit = row.querySelector('.quick-row-expected-exit')?.value || quickExpectedExit?.value || '18:00';
+    const expEntry = quickExpectedEntry?.value || '07:00';
 
     let lateMinutes = 0;
     if (entry && expEntry) lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(expEntry), 0);
-    if (lunchOut && expLunchOut) lateMinutes += Math.max(timeToMinutes(lunchOut) - timeToMinutes(expLunchOut), 0);
-    if (lunchIn && expLunchIn) lateMinutes += Math.max(timeToMinutes(lunchIn) - timeToMinutes(expLunchIn), 0);
-    // Salida: solo penaliza si se va ANTES de la hora esperada (18:00).
-    if (exit && expExit) lateMinutes += Math.max(timeToMinutes(expExit) - timeToMinutes(exit), 0);
+    // Salida: solo penaliza si se va ANTES de las 18:00 (se sobreentiende que salen a las 18).
+    if (exit) lateMinutes += Math.max(timeToMinutes('18:00') - timeToMinutes(exit), 0);
 
     cell.textContent = lateMinutes > 0 ? `${lateMinutes} min` : '-';
   }
@@ -206,11 +195,8 @@ if (quickForm) {
       if (next) next.querySelector('.quick-status')?.focus();
     });
   });
-  [quickExpectedEntry, quickExpectedLunchOut, quickExpectedLunchIn, quickExpectedExit].forEach((input) => {
-    if (!input) return;
-    input.addEventListener('input', () => {
-      quickRows().forEach((row) => updateQuickLate(row));
-    });
+  quickExpectedEntry?.addEventListener('input', () => {
+    quickRows().forEach((row) => updateQuickLate(row));
   });
   quickScheduled?.addEventListener('input', () => {
     quickRows().forEach((row) => {
