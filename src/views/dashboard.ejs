@@ -1,11 +1,66 @@
 <%- include('partials/header') %>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<section class="panel">
-  <div class="section-title">
+<style>
+  .dash-hero { background: linear-gradient(120deg, #10192d 0%, #1d3a7a 55%, #2454d6 100%); color: #fff; border-radius: 20px; padding: 22px 24px; margin-bottom: 18px; box-shadow: 0 18px 40px rgba(16,25,45,.18); }
+  .dash-hero h2 { margin: 0 0 4px; font-size: 1.15rem; color: #fff; }
+  .dash-hero p { color: #c7d5f5; margin: 0; }
+  .dash-hero .inline-form select, .dash-hero .inline-form input { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.28); color: #fff; }
+  .dash-hero .inline-form button { background: #fff; color: #193c9a; }
+  .dash-hero .inline-form input::-webkit-calendar-picker-indicator { filter: invert(1); }
+  .dash-hero a { color: #fff; font-weight: 700; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .card.kpi { text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); border-left: 5px solid var(--primary); transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+  .card.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(32,43,72,.14); }
+  .card.kpi.active { background: #eef4ff; box-shadow: 0 0 0 2px rgba(36,84,214,.35), 0 16px 34px rgba(32,43,72,.14); }
+  .card.kpi span { display: block; }
+  .card.kpi small { display: block; margin-top: 4px; color: var(--muted); font-weight: 700; font-size: .78rem; }
+  .card.kpi .kpi-hint { margin-top: 10px; font-size: .68rem; letter-spacing: .03em; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
+  .card.kpi.active .kpi-hint { color: var(--primary); }
+
+  .charts-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin: 6px 0 18px; }
+  .chart-card { grid-column: span 4; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px 18px; box-shadow: 0 14px 34px rgba(32,43,72,.07); }
+  .chart-card.wide { grid-column: span 12; }
+  .chart-card__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .chart-card__head h3 { margin: 0; font-size: .98rem; color: #1e293b; }
+  .chart-card__head small { display: block; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+  .chart-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: #eef4ff; color: var(--primary-dark); font-size: .68rem; font-weight: 800; white-space: nowrap; }
+  .chart-wrap { position: relative; height: 250px; }
+  .chart-wrap.tall { height: 290px; }
+
+  .detail-panel { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 14px 34px rgba(32,43,72,.07); padding: 20px; margin-bottom: 18px; }
+  .detail-empty { display: grid; place-items: center; text-align: center; padding: 34px 16px; color: var(--muted); background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 14px; }
+  .detail-empty strong { color: #1e293b; font-size: 1rem; }
+  .detail-empty .big { font-size: 2rem; margin-bottom: 6px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; white-space: nowrap; background: #eef3ff; color: var(--primary-dark); }
+  .status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status-pill.ok { background: #e8fbf4; color: #0f9f6e; }
+  .status-pill.justified { background: #eaf2ff; color: #2563eb; }
+  .status-pill.danger { background: #fdecef; color: #d12f45; }
+  .status-pill.warn { background: #fff7e6; color: #c27803; }
+  .status-pill.violet { background: #f3ecff; color: #7c3aed; }
+  .status-pill.cyan { background: #e6fbff; color: #0891b2; }
+
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chart-card { grid-column: span 6; }
+    .chart-card.wide { grid-column: span 12; }
+  }
+  @media (max-width: 720px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+    .chart-card, .chart-card.wide { grid-column: span 12; }
+  }
+</style>
+
+<section class="dash-hero">
+  <div class="section-title" style="margin-bottom:0">
     <div>
-      <h2>Panel principal</h2>
-      <% if (branch) { %><p>Filtrado por <strong><%= branch %></strong>. <a href="/">Quitar filtro</a></p><% } else { %><p>Viendo <strong>todas</strong> las sucursales.</p><% } %>
+      <h2>Panel de control</h2>
+      <p>
+        <% if (branch) { %>Sucursal: <a href="/?from=<%= start %>&to=<%= end %>"><strong><%= branch %></strong> (quitar)</a><% } else { %>Vista general de <strong>todas las sucursales</strong><% } %>
+        &middot; Rango <strong><%= start %></strong> al <strong><%= end %></strong>
+      </p>
     </div>
     <form class="inline-form" method="get">
       <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
@@ -16,50 +71,24 @@
   </div>
 </section>
 
-<style>
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
-    margin: 20px 0;
-  }
-  .chart-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
-  .chart-card h3 {
-    margin-top: 0;
-    font-size: 1rem;
-    text-align: center;
-    color: #333;
-  }
-  .chart-wrap {
-    position: relative;
-    height: 260px;
-  }
-</style>
-
-<section class="cards">
-  <article class="card"><span>Trabajadores activos</span><strong><%= counts.active_workers || 0 %></strong></article>
-  <article class="card success"><span>Presentes hoy</span><strong><%= counts.present_today || 0 %></strong></article>
-  <article class="card warning"><span>Sin registro hoy</span><strong><%= counts.pending_today || 0 %></strong></article>
-  <article class="card"><span>Faltas justificadas</span><strong><%= counts.justified_today || 0 %></strong></article>
-  <article class="card danger"><span>Faltas injustificadas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
-  <article class="card warning"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong><small><%= counts.late_minutes_today || 0 %> min</small></article>
-  <article class="card"><span>De vacaciones</span><strong><%= (counts.vacation_today || 0) + (vacationRanges.total || 0) %></strong></article>
-  <article class="card"><span>Con permiso</span><strong><%= counts.permit_today || 0 %></strong></article>
+<section class="kpi-grid">
+  <button type="button" class="card kpi" data-kpi="active"><span>Trabajadores activos</span><strong><%= counts.active_workers || 0 %></strong><span class="kpi-hint">Ver trabajadores</span></button>
+  <button type="button" class="card kpi success" data-kpi="present"><span>Presentes hoy</span><strong><%= counts.present_today || 0 %></strong><span class="kpi-hint">Ver registros</span></button>
+  <button type="button" class="card kpi warning" data-kpi="pending"><span>Sin registro hoy</span><strong><%= counts.pending_today || 0 %></strong><span class="kpi-hint">Ver pendientes</span></button>
+  <button type="button" class="card kpi" data-kpi="justified_today"><span>Faltas justificadas</span><strong><%= counts.justified_today || 0 %></strong><span class="kpi-hint">Hoy</span></button>
+  <button type="button" class="card kpi danger" data-kpi="unjustified_today"><span>Faltas injustificadas</span><strong><%= counts.unjustified_today || 0 %></strong><span class="kpi-hint">Hoy</span></button>
+  <button type="button" class="card kpi warning" data-kpi="late_today"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong><small><%= counts.late_minutes_today || 0 %> min</small></button>
+  <button type="button" class="card kpi" data-kpi="vacation_today"><span>De vacaciones</span><strong><%= vacationDetailRows.length %></strong><span class="kpi-hint">Hoy</span></button>
+  <button type="button" class="card kpi" data-kpi="permit_today"><span>Con permiso</span><strong><%= counts.permit_today || 0 %></strong><span class="kpi-hint">Hoy</span></button>
 </section>
 
-<section class="cards compact">
-  <article class="card"><span>Dias laborados (rango)</span><strong><%= summary.worked_days_month || 0 %></strong></article>
-  <article class="card"><span>Min. atraso (rango)</span><strong><%= summary.late_minutes_month || 0 %></strong></article>
-  <article class="card"><span>Faltas justificadas (rango)</span><strong><%= summary.justified_month || 0 %></strong></article>
-  <article class="card danger"><span>Faltas injustificadas (rango)</span><strong><%= summary.unjustified_month || 0 %></strong></article>
-  <article class="card"><span>Vacaciones (rango)</span><strong><%= summary.vacation_month || 0 %></strong></article>
-  <article class="card"><span>Permisos (rango)</span><strong><%= summary.permit_month || 0 %></strong></article>
+<section class="kpi-grid">
+  <button type="button" class="card kpi" data-kpi="worked"><span>Dias laborados (rango)</span><strong><%= summary.worked_days_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
+  <button type="button" class="card kpi warning" data-kpi="late_minutes"><span>Min. atraso (rango)</span><strong><%= summary.late_minutes_month || 0 %></strong><span class="kpi-hint">Ver atrasos</span></button>
+  <button type="button" class="card kpi" data-kpi="justified_range"><span>Faltas justificadas (rango)</span><strong><%= summary.justified_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
+  <button type="button" class="card kpi danger" data-kpi="unjustified_range"><span>Faltas injustificadas (rango)</span><strong><%= summary.unjustified_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
+  <button type="button" class="card kpi" data-kpi="vacation_range"><span>Vacaciones (rango)</span><strong><%= summary.vacation_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
+  <button type="button" class="card kpi" data-kpi="permit_range"><span>Permisos (rango)</span><strong><%= summary.permit_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
 </section>
 
 <% if (lowVacation && lowVacation.length) { %>
@@ -85,169 +114,368 @@
 </section>
 <% } %>
 
-<section class="charts-title">
-  <h2>Graficas mensuales - <%= month %></h2>
-</section>
-
 <div class="charts-grid">
-  <div class="chart-card">
-    <h3>Asistencia por estado (ultimos 6 meses)</h3>
-    <div class="chart-wrap"><canvas id="chartMonths"></canvas></div>
+  <div class="chart-card wide">
+    <div class="chart-card__head">
+      <div>
+        <h3>Tendencia de asistencia</h3>
+        <small id="trendSub">Ultimos 6 meses por tipo de novedad</small>
+      </div>
+      <span class="chart-chip" id="trendChip">Todos</span>
+    </div>
+    <div class="chart-wrap tall"><canvas id="chartTrend"></canvas></div>
   </div>
 
   <div class="chart-card">
-    <h3>Top 5 trabajadores - Faltas injustificadas (rango)</h3>
-    <div class="chart-wrap"><canvas id="chartTopUnjust"></canvas></div>
-  </div>
-
-  <div class="chart-card">
-    <h3>Registros por sucursal (rango)</h3>
+    <div class="chart-card__head">
+      <div>
+        <h3>Registros por sucursal</h3>
+        <small id="branchSub">Rango seleccionado</small>
+      </div>
+    </div>
     <div class="chart-wrap"><canvas id="chartBranch"></canvas></div>
   </div>
 
   <div class="chart-card">
-    <h3>Resumen por tipo de novedad (rango)</h3>
-    <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
+    <div class="chart-card__head">
+      <div>
+        <h3>Composicion por novedad</h3>
+        <small id="statusSub">Rango seleccionado</small>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chartStatus"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card__head">
+      <div>
+        <h3>Personas con mas registros</h3>
+        <small id="topSub">Top 5 del rango</small>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chartTop"></canvas></div>
   </div>
 </div>
 
-<section class="panel">
+<section class="detail-panel" id="detailPanel">
   <div class="section-title">
-    <h2>Resumen del <%= start %> al <%= end %></h2>
-    <div class="export-actions">
-      <a class="button ghost" href="/panel/excel?table=resumen<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
-      <a class="button ghost" href="/panel/pdf?table=resumen<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
-      <a class="button" href="/reportes?from=<%= start %>&to=<%= end %><%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Ver reportes</a>
+    <div>
+      <h2 id="detailTitle">Detalle del panel</h2>
+      <p id="detailCount">Haz clic en una tarjeta para filtrar los datos y las graficas.</p>
+    </div>
+    <div class="export-actions" id="detailActions" style="display:none">
+      <a class="button ghost" id="detailExcel" href="#">Descargar Excel</a>
+      <a class="button ghost" id="detailPdf" href="#">Descargar PDF</a>
+      <button type="button" class="button ghost" id="detailReset">Quitar filtro</button>
     </div>
   </div>
-  <div class="table-wrap">
+
+  <div class="detail-empty" id="detailEmpty">
+    <div>
+      <div class="big">&#128202;</div>
+      <strong>Selecciona una tarjeta</strong>
+      <p>Al hacer clic veras el detalle en esta tabla y las graficas se filtraran automaticamente.</p>
+    </div>
+  </div>
+
+  <div class="table-wrap" id="detailTableWrap" style="display:none">
     <table>
-      <thead><tr><th>Tipo de novedad</th><th>Total</th><th>Minutos atraso</th></tr></thead>
-      <tbody>
-        <% if (!monthly.length) { %><tr><td colspan="3" class="empty">No existen registros este mes.</td></tr><% } %>
-        <% monthly.forEach((row) => { %>
-          <tr><td><span class="pill"><%= row.status %></span></td><td><%= row.total %></td><td><%= row.minutes || 0 %></td></tr>
-        <% }) %>
-      </tbody>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Novedad</th><th>Atraso</th><th>Observacion</th></tr></thead>
+      <tbody id="detailBody"></tbody>
     </table>
   </div>
 </section>
 
 <script>
-  // Datos pasados desde el servidor (JSON embebido de forma segura)
-  const chartData = {
-    months: <%- JSON.stringify(chartMonths.labels || []) %>,
-    series: <%- JSON.stringify(chartMonths.datasets || []) %>,
-    topUnjust: <%- JSON.stringify(topUnjustified || []) %>,
-    branchLabels: <%- JSON.stringify(chartBranch.labels || []) %>,
-    branchData: <%- JSON.stringify(chartBranch.data || []) %>,
-    monthlyLabels: <%- JSON.stringify(monthly.map((r) => r.status)) %>,
-    monthlyData: <%- JSON.stringify(monthly.map((r) => r.total)) %>
+  const DASH = {
+    branch: <%- JSON.stringify(branch || '') %>,
+    from: <%- JSON.stringify(start) %>,
+    to: <%- JSON.stringify(end) %>,
+    todayRows: <%- JSON.stringify(todayRows).replace(/</g, '\\u003c') %>,
+    rangeRows: <%- JSON.stringify(rangeRows).replace(/</g, '\\u003c') %>,
+    activeRows: <%- JSON.stringify(activeRows).replace(/</g, '\\u003c') %>,
+    pendingRows: <%- JSON.stringify(pendingRows).replace(/</g, '\\u003c') %>,
+    vacationRows: <%- JSON.stringify(vacationDetailRows).replace(/</g, '\\u003c') %>,
+    trend: <%- JSON.stringify(chartMonths).replace(/</g, '\\u003c') %>,
+    topUnjust: <%- JSON.stringify(topUnjustified).replace(/</g, '\\u003c') %>
   };
 
-  const monthColors = {
-    'ASISTENCIA NORMAL': 'rgba(34, 197, 94, 0.7)',
-    'FALTA JUSTIFICADA': 'rgba(59, 130, 246, 0.7)',
-    'FALTA INJUSTIFICADA': 'rgba(239, 68, 68, 0.7)',
-    'ATRASO': 'rgba(245, 158, 11, 0.7)',
-    'VACACIONES': 'rgba(139, 92, 246, 0.7)',
-    'PERMISO': 'rgba(16, 185, 129, 0.7)'
+  const STATUS_COLORS = {
+    'ASISTENCIA NORMAL': '#10b981',
+    'FALTA JUSTIFICADA': '#3b82f6',
+    'FALTA INJUSTIFICADA': '#ef4444',
+    'ATRASO': '#f59e0b',
+    'VACACIONES': '#8b5cf6',
+    'PERMISO': '#06b6d4',
+    'Activo': '#10b981',
+    'Sin registro hoy': '#f59e0b'
   };
+  const PALETTE = ['#2454d6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+  const KPI_LABELS = {
+    active: 'Trabajadores activos',
+    present: 'Presentes hoy',
+    pending: 'Sin registro hoy',
+    justified_today: 'Faltas justificadas (hoy)',
+    unjustified_today: 'Faltas injustificadas (hoy)',
+    late_today: 'Atrasos hoy',
+    vacation_today: 'De vacaciones',
+    permit_today: 'Con permiso',
+    worked: 'Dias laborados (rango)',
+    late_minutes: 'Min. atraso (rango)',
+    justified_range: 'Faltas justificadas (rango)',
+    unjustified_range: 'Faltas injustificadas (rango)',
+    vacation_range: 'Vacaciones (rango)',
+    permit_range: 'Permisos (rango)'
+  };
+  const STATUS_BY_KPI = {
+    present: 'ASISTENCIA NORMAL',
+    justified_today: 'FALTA JUSTIFICADA',
+    justified_range: 'FALTA JUSTIFICADA',
+    unjustified_today: 'FALTA INJUSTIFICADA',
+    unjustified_range: 'FALTA INJUSTIFICADA',
+    late_today: 'ATRASO',
+    late_minutes: 'ATRASO',
+    vacation_range: 'VACACIONES',
+    permit_today: 'PERMISO',
+    permit_range: 'PERMISO'
+  };
+  const RANGE_KPIS = new Set(['worked', 'late_minutes', 'justified_range', 'unjustified_range', 'vacation_range', 'permit_range']);
 
-  // Grafica 1: Asistencia por estado (últimos 6 meses)
-  new Chart(document.getElementById('chartMonths'), {
-    type: 'bar',
-    data: {
-      labels: chartData.months,
-      datasets: chartData.series.map((d, i) => ({
-        label: d.label,
-        data: d.data,
-        backgroundColor: monthColors[d.label] || 'rgba(100, 100, 100, 0.7)',
-        borderColor: monthColors[d.label] || 'rgba(100, 100, 100, 1)',
-        borderWidth: 1
-      }))
-    },
+  function hexToRgba(hex, alpha) {
+    const clean = hex.replace('#', '');
+    const value = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function rowsFor(kpi) {
+    if (!kpi) return DASH.rangeRows;
+    if (kpi === 'active') return DASH.activeRows;
+    if (kpi === 'pending') return DASH.pendingRows;
+    if (kpi === 'vacation_today') return DASH.vacationRows;
+    const base = RANGE_KPIS.has(kpi) ? DASH.rangeRows : DASH.todayRows;
+    if (kpi === 'worked') return base.filter((row) => row.estado === 'ASISTENCIA NORMAL' || row.estado === 'ATRASO');
+    const status = STATUS_BY_KPI[kpi];
+    return status ? base.filter((row) => row.estado === status) : DASH.rangeRows;
+  }
+
+  function groupCount(rows, key) {
+    const map = new Map();
+    rows.forEach((row) => {
+      const value = row[key] || 'Sin dato';
+      map.set(value, (map.get(value) || 0) + 1);
+    });
+    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  }
+
+  function trendStatuses(kpi) {
+    if (kpi === 'worked') return ['ASISTENCIA NORMAL', 'ATRASO'];
+    const status = STATUS_BY_KPI[kpi];
+    return status ? [status] : null;
+  }
+
+  function esc(value) {
+    return String(value === undefined || value === null || value === '' ? '-' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function pillClass(status) {
+    if (status === 'ASISTENCIA NORMAL' || status === 'Activo') return 'ok';
+    if (status === 'FALTA JUSTIFICADA') return 'justified';
+    if (status === 'FALTA INJUSTIFICADA') return 'danger';
+    if (status === 'ATRASO' || status === 'Sin registro hoy') return 'warn';
+    if (status === 'VACACIONES') return 'violet';
+    if (status === 'PERMISO') return 'cyan';
+    return '';
+  }
+
+  Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.borderColor = 'rgba(148, 163, 184, .16)';
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.legend.labels.boxWidth = 7;
+  Chart.defaults.plugins.legend.labels.padding = 14;
+  Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+  const grid = { color: 'rgba(148, 163, 184, .14)', drawBorder: false };
+  const ticks = { color: '#94a3b8', font: { size: 10, weight: '600' } };
+
+  const trendChart = new Chart(document.getElementById('chartTrend'), {
+    type: 'line',
+    data: { labels: DASH.trend.labels || [], datasets: [] },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { title: { display: false }, legend: { position: 'bottom' } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { grid: { display: false }, ticks },
+        y: { beginAtZero: true, stacked: false, grid, ticks: { ...ticks, precision: 0 } }
+      }
     }
   });
 
-  // Grafica 2: Top 5 trabajadores con más faltas injustificadas (mes)
-  new Chart(document.getElementById('chartTopUnjust'), {
-    type: 'bar',
-    data: {
-      labels: chartData.topUnjust.map((t) => t.name),
-      datasets: [{
-        label: 'Faltas injustificadas',
-        data: chartData.topUnjust.map((t) => t.total),
-        backgroundColor: 'rgba(239, 68, 68, 0.7)',
-        borderColor: 'rgba(239, 68, 68, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { title: { display: false }, legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-    }
-  });
+  function makeBar(canvasId, horizontal) {
+    return new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderRadius: 6, maxBarThickness: 26 }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: horizontal ? 'y' : 'x',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, grid: horizontal ? grid : { display: false }, ticks: { ...ticks, precision: 0 } },
+          y: { beginAtZero: true, grid: horizontal ? { display: false } : grid, ticks: { ...ticks, precision: 0 } }
+        }
+      }
+    });
+  }
 
-  // Grafica 3: Registros por sucursal (mes) - Donut
-  new Chart(document.getElementById('chartBranch'), {
+  const branchChart = makeBar('chartBranch', true);
+  const topChart = makeBar('chartTop', true);
+
+  const statusChart = new Chart(document.getElementById('chartStatus'), {
     type: 'doughnut',
-    data: {
-      labels: chartData.branchLabels,
-      datasets: [{
-        data: chartData.branchData,
-        backgroundColor: [
-          'rgba(59, 130, 246, 0.7)',
-          'rgba(34, 197, 94, 0.7)',
-          'rgba(239, 68, 68, 0.7)',
-          'rgba(245, 158, 11, 0.7)',
-          'rgba(139, 92, 246, 0.7)',
-          'rgba(16, 185, 129, 0.7)'
-        ],
-        borderColor: '#fff',
-        borderWidth: 2
-      }]
-    },
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#fff', borderWidth: 3, hoverOffset: 6 }] },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { title: { display: false }, legend: { position: 'bottom' } }
+      cutout: '62%',
+      plugins: { legend: { position: 'bottom' } }
     }
   });
 
-  // Grafica 4: Resumen por tipo de novedad (mes) - Barras
-  new Chart(document.getElementById('chartMonthly'), {
-    type: 'bar',
-    data: {
-      labels: chartData.monthlyLabels,
-      datasets: [{
-        label: 'Registros',
-        data: chartData.monthlyData,
-        backgroundColor: chartData.monthlyLabels.map((lbl) => {
-          if (lbl === 'FALTA INJUSTIFICADA') return 'rgba(239, 68, 68, 0.7)';
-          if (lbl === 'FALTA JUSTIFICADA') return 'rgba(59, 130, 246, 0.7)';
-          if (lbl === 'ATRASO') return 'rgba(245, 158, 11, 0.7)';
-          if (lbl === 'VACACIONES') return 'rgba(139, 92, 246, 0.7)';
-          if (lbl === 'PERMISO') return 'rgba(16, 185, 129, 0.7)';
-          return 'rgba(34, 197, 94, 0.7)';
-        }),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { title: { display: false }, legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  function trendDatasets(kpi) {
+    const statuses = trendStatuses(kpi);
+    return (DASH.trend.datasets || [])
+      .filter((dataset) => !statuses || statuses.includes(dataset.label))
+      .map((dataset) => {
+        const color = STATUS_COLORS[dataset.label] || '#2454d6';
+        return {
+          label: dataset.label,
+          data: dataset.data,
+          borderColor: color,
+          backgroundColor: hexToRgba(color, .12),
+          fill: Boolean(statuses),
+          tension: .35,
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: color,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1.5
+        };
+      });
+  }
+
+  function updateCharts(kpi) {
+    const rows = rowsFor(kpi);
+    const label = KPI_LABELS[kpi] || 'Todos los registros del rango';
+    const rangeText = kpi ? `${label} - ${DASH.from} a ${DASH.to}` : `Rango ${DASH.from} a ${DASH.to}`;
+
+    trendChart.data.datasets = trendDatasets(kpi);
+    trendChart.update();
+    document.getElementById('trendSub').textContent = kpi ? `Tendencia de ${label.toLowerCase()}` : 'Ultimos 6 meses por tipo de novedad';
+    document.getElementById('trendChip').textContent = kpi ? label : 'Todos';
+
+    const branchPairs = groupCount(rows, 'sucursal');
+    branchChart.data.labels = branchPairs.map((pair) => pair[0]);
+    branchChart.data.datasets[0].data = branchPairs.map((pair) => pair[1]);
+    branchChart.data.datasets[0].backgroundColor = branchPairs.map((_, index) => PALETTE[index % PALETTE.length]);
+    branchChart.update();
+    document.getElementById('branchSub').textContent = rangeText;
+
+    const statusPairs = groupCount(rows, 'estado');
+    statusChart.data.labels = statusPairs.map((pair) => pair[0]);
+    statusChart.data.datasets[0].data = statusPairs.map((pair) => pair[1]);
+    statusChart.data.datasets[0].backgroundColor = statusPairs.map((pair) => STATUS_COLORS[pair[0]] || PALETTE[0]);
+    statusChart.update();
+    document.getElementById('statusSub').textContent = rangeText;
+
+    const topPairs = groupCount(rows, 'trabajador').slice(0, 5);
+    topChart.data.labels = topPairs.map((pair) => pair[0]);
+    topChart.data.datasets[0].data = topPairs.map((pair) => pair[1]);
+    topChart.data.datasets[0].backgroundColor = topPairs.map((_, index) => PALETTE[index % PALETTE.length]);
+    topChart.update();
+    document.getElementById('topSub').textContent = `Top ${topPairs.length || 0} - ${rangeText}`;
+  }
+
+  function renderDetail(kpi) {
+    const rows = rowsFor(kpi);
+    const title = KPI_LABELS[kpi] || 'Detalle del panel';
+    const empty = document.getElementById('detailEmpty');
+    const wrap = document.getElementById('detailTableWrap');
+    const actions = document.getElementById('detailActions');
+    const body = document.getElementById('detailBody');
+
+    document.getElementById('detailTitle').textContent = title;
+    document.getElementById('detailCount').textContent = `${rows.length} registro(s) encontrados.`;
+
+    if (!kpi) {
+      empty.style.display = 'grid';
+      wrap.style.display = 'none';
+      actions.style.display = 'none';
+      body.innerHTML = '';
+      return;
     }
+
+    empty.style.display = 'none';
+    wrap.style.display = 'block';
+    actions.style.display = 'flex';
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty">No hay registros para este filtro.</td></tr>';
+    } else {
+      body.innerHTML = rows.map((row) => `<tr>
+        <td>${esc(row.fecha)}</td>
+        <td>${esc(row.trabajador)}</td>
+        <td>${esc(row.cedula)}</td>
+        <td>${esc(row.sucursal)}</td>
+        <td><span class="status-pill ${pillClass(row.estado)}">${esc(row.estado)}</span></td>
+        <td>${Number(row.atraso) > 0 ? `${Number(row.atraso)} min` : '-'}</td>
+        <td>${esc(row.observacion)}</td>
+      </tr>`).join('');
+    }
+
+    const query = new URLSearchParams({ kpi, from: DASH.from, to: DASH.to });
+    if (DASH.branch) query.set('branch', DASH.branch);
+    document.getElementById('detailExcel').href = `/panel/detalle/excel?${query.toString()}`;
+    document.getElementById('detailPdf').href = `/panel/detalle/pdf?${query.toString()}`;
+  }
+
+  let selectedKpi = '';
+
+  function selectKpi(kpi) {
+    selectedKpi = selectedKpi === kpi ? '' : kpi;
+    document.querySelectorAll('[data-kpi]').forEach((button) => {
+      button.classList.toggle('active', button.dataset.kpi === selectedKpi);
+    });
+    renderDetail(selectedKpi);
+    updateCharts(selectedKpi);
+    if (selectedKpi) {
+      document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  document.querySelectorAll('[data-kpi]').forEach((button) => {
+    button.addEventListener('click', () => selectKpi(button.dataset.kpi));
   });
+  document.getElementById('detailReset').addEventListener('click', () => {
+    selectedKpi = '';
+    document.querySelectorAll('[data-kpi]').forEach((button) => button.classList.remove('active'));
+    renderDetail('');
+    updateCharts('');
+  });
+
+  // Estado inicial: graficas con todo el rango
+  renderDetail('');
+  updateCharts('');
 </script>
 
 <%- include('partials/footer') %>

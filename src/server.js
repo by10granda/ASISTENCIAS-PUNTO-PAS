@@ -80,6 +80,26 @@ app.get('/panel/pdf', async (req, res, next) => {
   }
 });
 
+app.get('/panel/detalle/excel', async (req, res, next) => {
+  try {
+    const data = await buildDashboardData(req.query);
+    const detail = buildDetailForKpi(clean(req.query.kpi), data);
+    sendExcel(res, 'panel-detalle', detail.title, detailColumns, detail.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/panel/detalle/pdf', async (req, res, next) => {
+  try {
+    const data = await buildDashboardData(req.query);
+    const detail = buildDetailForKpi(clean(req.query.kpi), data);
+    sendPdf(res, 'panel-detalle', detail.title, detailColumns, detail.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 async function buildDashboardData(query) {
   const date = today();
   const month = currentMonth();
@@ -97,6 +117,67 @@ async function buildDashboardData(query) {
   const deductions = allDeductions.filter(belongsToBranch);
   const todayRecords = attendance.filter((record) => record.record_date === date);
   const monthRecords = attendance.filter((record) => record.record_date >= from && record.record_date <= to);
+
+  /* ---- Filas de detalle para el panel interactivo ---- */
+  const detailWorkerMap = new Map(allWorkers.map((worker) => [String(worker.id), worker]));
+  const toDetailRows = (records) => records.map((record) => {
+    const worker = detailWorkerMap.get(String(record.worker_id));
+    return {
+      fecha: record.record_date,
+      trabajador: worker?.full_name || 'Trabajador no encontrado',
+      cedula: worker?.cedula || '',
+      sucursal: worker?.branch || '',
+      estado: record.status,
+      atraso: Number(record.late_minutes) || 0,
+      observacion: record.observation || record.justified_reason || record.permit_reason || ''
+    };
+  }).sort((a, b) => b.fecha.localeCompare(a.fecha) || a.trabajador.localeCompare(b.trabajador));
+  const todayRows = toDetailRows(todayRecords);
+  const rangeRows = toDetailRows(monthRecords);
+  const workerDetailRow = (worker, estado) => ({
+    fecha: '',
+    trabajador: worker.full_name,
+    cedula: worker.cedula,
+    sucursal: worker.branch,
+    estado,
+    atraso: 0,
+    observacion: worker.position || ''
+  });
+  const activeRows = workers.filter((worker) => worker.status === 'Activo').map((worker) => workerDetailRow(worker, 'Activo'));
+  const pendingRows = workers
+    .filter((worker) => worker.status === 'Activo' && !todayRecords.some((record) => record.worker_id === worker.id))
+    .map((worker) => workerDetailRow(worker, 'Sin registro hoy'));
+  const vacationRangeRows = vacations
+    .filter((vacation) => date >= vacation.start_date && date <= vacation.end_date && ['Programadas', 'En curso'].includes(vacation.status))
+    .map((vacation) => {
+      const worker = detailWorkerMap.get(String(vacation.worker_id));
+      return {
+        fecha: `${vacation.start_date} a ${vacation.end_date}`,
+        trabajador: worker?.full_name || 'Trabajador no encontrado',
+        cedula: worker?.cedula || '',
+        sucursal: worker?.branch || '',
+        estado: 'VACACIONES',
+        atraso: 0,
+        observacion: vacation.observation || vacation.status
+      };
+    });
+  const vacationDetailRows = (() => {
+    const seen = new Set();
+    const rows = [];
+    todayRows.filter((row) => row.estado === 'VACACIONES').forEach((row) => {
+      const key = row.cedula || row.trabajador;
+      seen.add(key);
+      rows.push(row);
+    });
+    vacationRangeRows.forEach((row) => {
+      const key = row.cedula || row.trabajador;
+      if (!seen.has(key)) {
+        seen.add(key);
+        rows.push(row);
+      }
+    });
+    return rows;
+  })();
   const counts = {
     active_workers: workers.filter((worker) => worker.status === 'Activo').length,
     present_today: count(todayRecords, 'ASISTENCIA NORMAL'),
@@ -202,7 +283,7 @@ async function buildDashboardData(query) {
   }
 
   const exportQuery = new URLSearchParams(Object.entries({ branch, from, to }).filter(([, value]) => value)).toString();
-  return { counts, monthly, month, start: from, end: to, vacationRanges, summary, lowVacation, balanceDate, branch, branches, exportQuery, chartMonths, topUnjustified, chartBranch };
+  return { counts, monthly, month, start: from, end: to, vacationRanges, summary, lowVacation, balanceDate, branch, branches, exportQuery, chartMonths, topUnjustified, chartBranch, todayRows, rangeRows, activeRows, pendingRows, vacationDetailRows };
 }
 
 const dashboardBalanceColumns = [
@@ -235,6 +316,70 @@ function dashboardExport(table, data) {
     columns: dashboardSummaryColumns,
     rows: data.monthly
   };
+}
+
+const detailColumns = [
+  { header: 'Fecha', key: 'fecha', width: 14 },
+  { header: 'Trabajador', key: 'trabajador', width: 26 },
+  { header: 'Cedula', key: 'cedula', width: 14 },
+  { header: 'Sucursal', key: 'sucursal', width: 16 },
+  { header: 'Novedad', key: 'estado', width: 20 },
+  { header: 'Atraso (min)', key: 'atraso', width: 12 },
+  { header: 'Observacion', key: 'observacion', width: 30 }
+];
+
+const DETAIL_STATUS_BY_KPI = {
+  present: 'ASISTENCIA NORMAL',
+  justified_today: 'FALTA JUSTIFICADA',
+  justified_range: 'FALTA JUSTIFICADA',
+  unjustified_today: 'FALTA INJUSTIFICADA',
+  unjustified_range: 'FALTA INJUSTIFICADA',
+  late_today: 'ATRASO',
+  late_minutes: 'ATRASO',
+  vacation_range: 'VACACIONES',
+  permit_today: 'PERMISO',
+  permit_range: 'PERMISO'
+};
+
+const DETAIL_RANGE_KPIS = new Set(['worked', 'late_minutes', 'justified_range', 'unjustified_range', 'vacation_range', 'permit_range']);
+
+const DETAIL_KPI_LABELS = {
+  active: 'Trabajadores activos',
+  present: 'Presentes hoy',
+  pending: 'Sin registro hoy',
+  justified_today: 'Faltas justificadas (hoy)',
+  unjustified_today: 'Faltas injustificadas (hoy)',
+  late_today: 'Atrasos hoy',
+  vacation_today: 'De vacaciones',
+  permit_today: 'Con permiso',
+  worked: 'Dias laborados (rango)',
+  late_minutes: 'Min. atraso (rango)',
+  justified_range: 'Faltas justificadas (rango)',
+  unjustified_range: 'Faltas injustificadas (rango)',
+  vacation_range: 'Vacaciones (rango)',
+  permit_range: 'Permisos (rango)'
+};
+
+function buildDetailForKpi(kpi, data) {
+  const label = DETAIL_KPI_LABELS[kpi] || 'Registros del rango';
+  let rows;
+  if (kpi === 'active') {
+    rows = data.activeRows;
+  } else if (kpi === 'pending') {
+    rows = data.pendingRows;
+  } else if (kpi === 'vacation_today') {
+    rows = data.vacationDetailRows;
+  } else {
+    const base = DETAIL_RANGE_KPIS.has(kpi) ? data.rangeRows : data.todayRows;
+    if (kpi === 'worked') {
+      rows = base.filter((row) => row.estado === 'ASISTENCIA NORMAL' || row.estado === 'ATRASO');
+    } else if (DETAIL_STATUS_BY_KPI[kpi]) {
+      rows = base.filter((row) => row.estado === DETAIL_STATUS_BY_KPI[kpi]);
+    } else {
+      rows = data.rangeRows;
+    }
+  }
+  return { title: `Panel - ${label}`, label, rows };
 }
 
 app.use('/trabajadores', workersRouter);
