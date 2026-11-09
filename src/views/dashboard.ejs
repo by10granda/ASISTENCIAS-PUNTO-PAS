@@ -42,6 +42,9 @@
   .status-pill.warn { background: #fff7e6; color: #c27803; }
   .status-pill.violet { background: #f3ecff; color: #7c3aed; }
   .status-pill.cyan { background: #e6fbff; color: #0891b2; }
+  .cert-link { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: #e8fbf4; color: #0f9f6e; font-size: .72rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
+  .cert-link::before { content: '\1F4CE'; font-size: .78rem; }
+  .cert-link:hover { background: #d3f7e9; }
 
   @media (max-width: 1100px) {
     .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -158,7 +161,7 @@
 
   <div class="table-wrap" id="detailTableWrap" style="display:none">
     <table>
-      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Novedad</th><th>Atraso</th><th>Observacion</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Cedula</th><th>Sucursal</th><th>Novedad</th><th>Atraso</th><th>Certificado</th><th>Observacion</th></tr></thead>
       <tbody id="detailBody"></tbody>
     </table>
   </div>
@@ -408,17 +411,24 @@
     actions.style.display = 'flex';
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="empty">No hay registros para este filtro.</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="empty">No hay registros para este filtro.</td></tr>';
     } else {
-      body.innerHTML = rows.map((row) => `<tr>
+      body.innerHTML = rows.map((row) => {
+        const canView = row.has_support_doc && row.worker_id && /^\d{4}-\d{2}-\d{2}$/.test(String(row.fecha));
+        const certCell = canView
+          ? `<a class="cert-link" href="/asistencia/certificado?worker_id=${encodeURIComponent(row.worker_id)}&record_date=${encodeURIComponent(row.fecha)}" target="_blank" rel="noopener">Ver certificado</a>`
+          : '-';
+        return `<tr>
         <td>${esc(row.fecha)}</td>
         <td>${esc(row.trabajador)}</td>
         <td>${esc(row.cedula)}</td>
         <td>${esc(row.sucursal)}</td>
         <td><span class="status-pill ${pillClass(row.estado)}">${esc(row.estado)}</span></td>
         <td>${Number(row.atraso) > 0 ? `${Number(row.atraso)} min` : '-'}</td>
+        <td>${certCell}</td>
         <td>${esc(row.observacion)}</td>
-      </tr>`).join('');
+      </tr>`;
+      }).join('');
     }
 
     const query = new URLSearchParams({ kpi, from: DASH.from, to: DASH.to });

@@ -122,6 +122,7 @@ async function buildDashboardData(query) {
   const detailWorkerMap = new Map(allWorkers.map((worker) => [String(worker.id), worker]));
   const toDetailRows = (records) => records.map((record) => {
     const worker = detailWorkerMap.get(String(record.worker_id));
+    const hasSupport = Number(record.has_support_doc) ? 1 : 0;
     return {
       fecha: record.record_date,
       trabajador: worker?.full_name || 'Trabajador no encontrado',
@@ -129,7 +130,10 @@ async function buildDashboardData(query) {
       sucursal: worker?.branch || '',
       estado: record.status,
       atraso: Number(record.late_minutes) || 0,
-      observacion: record.observation || record.justified_reason || record.permit_reason || ''
+      observacion: record.observation || record.justified_reason || record.permit_reason || '',
+      worker_id: record.worker_id,
+      has_support_doc: hasSupport,
+      certificado: hasSupport ? 'Si' : 'No'
     };
   }).sort((a, b) => b.fecha.localeCompare(a.fecha) || a.trabajador.localeCompare(b.trabajador));
   const todayRows = toDetailRows(todayRecords);
@@ -141,7 +145,10 @@ async function buildDashboardData(query) {
     sucursal: worker.branch,
     estado,
     atraso: 0,
-    observacion: worker.position || ''
+    observacion: worker.position || '',
+    worker_id: worker.id,
+    has_support_doc: 0,
+    certificado: 'No'
   });
   const activeRows = workers.filter((worker) => worker.status === 'Activo').map((worker) => workerDetailRow(worker, 'Activo'));
   const pendingRows = workers
@@ -158,7 +165,10 @@ async function buildDashboardData(query) {
         sucursal: worker?.branch || '',
         estado: 'VACACIONES',
         atraso: 0,
-        observacion: vacation.observation || vacation.status
+        observacion: vacation.observation || vacation.status,
+        worker_id: vacation.worker_id,
+        has_support_doc: 0,
+        certificado: 'No'
       };
     });
   const vacationDetailRows = (() => {
@@ -325,6 +335,7 @@ const detailColumns = [
   { header: 'Sucursal', key: 'sucursal', width: 16 },
   { header: 'Novedad', key: 'estado', width: 20 },
   { header: 'Atraso (min)', key: 'atraso', width: 12 },
+  { header: 'Certificado', key: 'certificado', width: 12 },
   { header: 'Observacion', key: 'observacion', width: 30 }
 ];
 
