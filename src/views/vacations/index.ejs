@@ -2,6 +2,18 @@
 <%- include('../partials/errors') %>
 
 <section class="panel">
+  <h2>Registrar vacaciones</h2>
+  <form method="post" action="/vacaciones" class="form-grid confirm-important">
+    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"<%= branch && w.branch === branch ? ' selected' : '' %>><%= w.full_name %> - <%= w.branch %></option><% }) %></select></label>
+    <label>Inicio<input required type="date" name="start_date"></label>
+    <label>Finalizacion<input required type="date" name="end_date"></label>
+    <label>Estado<select name="status"><option>Programadas</option><option>En curso</option><option>Finalizadas</option></select></label>
+    <label class="span-2">Observacion<textarea name="observation" rows="3"></textarea></label>
+    <div class="actions"><button>Guardar vacaciones</button></div>
+  </form>
+</section>
+
+<section class="panel">
   <div class="section-title">
     <div>
       <h2>Saldo de vacaciones al <%= balanceDate %></h2>
@@ -9,7 +21,7 @@
       <% if (typeof branch !== 'undefined' && branch) { %><p>Filtrado por <strong><%= branch %></strong>. <a href="/vacaciones">Quitar filtro</a></p><% } %>
     </div>
     <form class="inline-form" method="get">
-      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %><%= name %></option><% }) %></select>
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
       <button>Aplicar</button>
     </form>
   </div>
@@ -22,18 +34,6 @@
       </tbody>
     </table>
   </div>
-</section>
-
-<section class="panel">
-  <h2>Registrar vacaciones</h2>
-  <form method="post" action="/vacaciones" class="form-grid confirm-important">
-    <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"<%= branch && w.branch === branch ? ' selected' : '' %>><%= w.full_name %> - <%= w.branch %></option><% }) %></select></label>
-    <label>Inicio<input required type="date" name="start_date"></label>
-    <label>Finalizacion<input required type="date" name="end_date"></label>
-    <label>Estado<select name="status"><option>Programadas</option><option>En curso</option><option>Finalizadas</option></select></label>
-    <label class="span-2">Observacion<textarea name="observation" rows="3"></textarea></label>
-    <div class="actions"><button>Guardar vacaciones</button></div>
-  </form>
 </section>
 
 <section class="panel">
