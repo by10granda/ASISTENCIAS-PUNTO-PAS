@@ -9,6 +9,8 @@
     </div>
     <form class="inline-form" method="get">
       <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <input type="date" name="from" value="<%= start %>" title="Desde">
+      <input type="date" name="to" value="<%= end %>" title="Hasta">
       <button>Aplicar</button>
     </form>
   </div>
@@ -52,12 +54,12 @@
 </section>
 
 <section class="cards compact">
-  <article class="card"><span>Dias laborados (mes)</span><strong><%= summary.worked_days_month || 0 %></strong></article>
-  <article class="card"><span>Min. atraso (mes)</span><strong><%= summary.late_minutes_month || 0 %></strong></article>
-  <article class="card"><span>Faltas justificadas (mes)</span><strong><%= summary.justified_month || 0 %></strong></article>
-  <article class="card danger"><span>Faltas injustificadas (mes)</span><strong><%= summary.unjustified_month || 0 %></strong></article>
-  <article class="card"><span>Vacaciones (mes)</span><strong><%= summary.vacation_month || 0 %></strong></article>
-  <article class="card"><span>Permisos (mes)</span><strong><%= summary.permit_month || 0 %></strong></article>
+  <article class="card"><span>Dias laborados (rango)</span><strong><%= summary.worked_days_month || 0 %></strong></article>
+  <article class="card"><span>Min. atraso (rango)</span><strong><%= summary.late_minutes_month || 0 %></strong></article>
+  <article class="card"><span>Faltas justificadas (rango)</span><strong><%= summary.justified_month || 0 %></strong></article>
+  <article class="card danger"><span>Faltas injustificadas (rango)</span><strong><%= summary.unjustified_month || 0 %></strong></article>
+  <article class="card"><span>Vacaciones (rango)</span><strong><%= summary.vacation_month || 0 %></strong></article>
+  <article class="card"><span>Permisos (rango)</span><strong><%= summary.permit_month || 0 %></strong></article>
 </section>
 
 <% if (lowVacation && lowVacation.length) { %>
@@ -68,8 +70,8 @@
       <p>Estos trabajadores ya consumieron sus dias disponibles al <%= balanceDate %>.</p>
     </div>
     <div class="export-actions">
-      <a class="button ghost" href="/panel/excel?table=saldo<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar Excel</a>
-      <a class="button ghost" href="/panel/pdf?table=saldo<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar PDF</a>
+      <a class="button ghost" href="/panel/excel?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/panel/pdf?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
     </div>
   </div>
   <div class="table-wrap">
@@ -94,28 +96,28 @@
   </div>
 
   <div class="chart-card">
-    <h3>Top 5 trabajadores - Faltas injustificadas (mes)</h3>
+    <h3>Top 5 trabajadores - Faltas injustificadas (rango)</h3>
     <div class="chart-wrap"><canvas id="chartTopUnjust"></canvas></div>
   </div>
 
   <div class="chart-card">
-    <h3>Registros por sucursal (mes)</h3>
+    <h3>Registros por sucursal (rango)</h3>
     <div class="chart-wrap"><canvas id="chartBranch"></canvas></div>
   </div>
 
   <div class="chart-card">
-    <h3>Resumen por tipo de novedad (mes)</h3>
+    <h3>Resumen por tipo de novedad (rango)</h3>
     <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
   </div>
 </div>
 
 <section class="panel">
   <div class="section-title">
-    <h2>Resumen mensual <%= month %></h2>
+    <h2>Resumen del <%= start %> al <%= end %></h2>
     <div class="export-actions">
-      <a class="button ghost" href="/panel/excel?table=resumen<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar Excel</a>
-      <a class="button ghost" href="/panel/pdf?table=resumen<%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Descargar PDF</a>
-      <a class="button" href="/reportes?month=<%= month %>">Ver reportes</a>
+      <a class="button ghost" href="/panel/excel?table=resumen<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/panel/pdf?table=resumen<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
+      <a class="button" href="/reportes?from=<%= start %>&to=<%= end %><%= branch ? '&branch=' + encodeURIComponent(branch) : '' %>">Ver reportes</a>
     </div>
   </div>
   <div class="table-wrap">

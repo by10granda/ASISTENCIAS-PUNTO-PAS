@@ -113,7 +113,8 @@ attendanceRouter.get('/certificado', async (req, res, next) => {
 
 async function renderAttendanceWithErrors(res, date, errors, branch = '') {
   const data = await attendanceViewData(date, branch);
-  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, branches: data.branches, ...data, statuses: attendanceStatuses, errors });
+  const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
+  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
 }
 
 async function attendanceViewData(date, branch) {

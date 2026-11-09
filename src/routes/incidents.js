@@ -77,9 +77,11 @@ const abandonmentColumns = [
 incidentsRouter.get('/', async (req, res, next) => {
   try {
     const branch = clean(req.query.branch);
-    const data = await incidentViewData(branch);
-    const exportQuery = new URLSearchParams(branch ? { branch } : {}).toString();
-    res.render('incidents/index', { title: 'Novedades', branch, exportQuery, ...data, errors: [] });
+    const from = clean(req.query.from);
+    const to = clean(req.query.to);
+    const data = await incidentViewData(branch, from, to);
+    const exportQuery = new URLSearchParams(Object.entries({ branch, from, to }).filter(([, value]) => value)).toString();
+    res.render('incidents/index', { title: 'Novedades', branch, from, to, exportQuery, ...data, errors: [] });
   } catch (error) {
     next(error);
   }
@@ -87,7 +89,7 @@ incidentsRouter.get('/', async (req, res, next) => {
 
 incidentsRouter.get('/excel', async (req, res, next) => {
   try {
-    const data = await incidentViewData(clean(req.query.branch));
+    const data = await incidentViewData(clean(req.query.branch), clean(req.query.from), clean(req.query.to));
     const exported = incidentExport(clean(req.query.table), data);
     sendExcel(res, exported.filename, exported.title, exported.columns, exported.rows);
   } catch (error) {
@@ -97,7 +99,7 @@ incidentsRouter.get('/excel', async (req, res, next) => {
 
 incidentsRouter.get('/pdf', async (req, res, next) => {
   try {
-    const data = await incidentViewData(clean(req.query.branch));
+    const data = await incidentViewData(clean(req.query.branch), clean(req.query.from), clean(req.query.to));
     const exported = incidentExport(clean(req.query.table), data);
     sendPdf(res, exported.filename, exported.title, exported.columns, exported.rows);
   } catch (error) {
@@ -116,8 +118,9 @@ incidentsRouter.post('/llamados', async (req, res, next) => {
     };
     const errors = await validateAttentionCall(record);
     if (errors.length) {
-      const data = await incidentViewData(clean(req.body.branch));
-      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
+      const branchValue = clean(req.body.branch);
+      const data = await incidentViewData(branchValue);
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: branchValue, from: '', to: '', exportQuery: new URLSearchParams(branchValue ? { branch: branchValue } : {}).toString(), ...data, errors });
     }
 
     await createAttentionCall(record);
@@ -139,8 +142,9 @@ incidentsRouter.post('/abandonos', async (req, res, next) => {
     };
     const errors = await validateJobAbandonment(record);
     if (errors.length) {
-      const data = await incidentViewData(clean(req.body.branch));
-      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
+      const branchValue = clean(req.body.branch);
+      const data = await incidentViewData(branchValue);
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: branchValue, from: '', to: '', exportQuery: new URLSearchParams(branchValue ? { branch: branchValue } : {}).toString(), ...data, errors });
     }
 
     await createJobAbandonment(record);
@@ -163,8 +167,9 @@ incidentsRouter.post('/retiros', async (req, res, next) => {
     };
     const errors = await validateMedicalWithdrawal(record);
     if (errors.length) {
-      const data = await incidentViewData(clean(req.body.branch));
-      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
+      const branchValue = clean(req.body.branch);
+      const data = await incidentViewData(branchValue);
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: branchValue, from: '', to: '', exportQuery: new URLSearchParams(branchValue ? { branch: branchValue } : {}).toString(), ...data, errors });
     }
 
     await createMedicalWithdrawal(record);
@@ -174,7 +179,7 @@ incidentsRouter.post('/retiros', async (req, res, next) => {
   }
 });
 
-async function incidentViewData(branchFilter = '') {
+async function incidentViewData(branchFilter = '', from = '', to = '') {
   const [workers, allWorkers, attendanceRecords, attentionCallRows, jobAbandonmentRows, medicalWithdrawalRows] = await Promise.all([
     listWorkers(), listWorkers(), listAttendance(), listAttentionCalls(), listJobAbandonments(), listMedicalWithdrawals()
   ]);
@@ -183,6 +188,7 @@ async function incidentViewData(branchFilter = '') {
     const worker = workerMap.get(workerId);
     return !branchFilter || (worker && worker.branch === branchFilter);
   };
+  const inRange = (record) => (!from || record.record_date >= from) && (!to || record.record_date <= to);
   const activeWorkers = workers
     .filter((worker) => worker.status === 'Activo')
     .filter((worker) => !branchFilter || worker.branch === branchFilter)
@@ -191,6 +197,7 @@ async function incidentViewData(branchFilter = '') {
   const absences = attendanceRecords
     .filter((record) => record.status === 'FALTA JUSTIFICADA' || record.status === 'FALTA INJUSTIFICADA')
     .filter((record) => matchBranch(record.worker_id))
+    .filter(inRange)
     .map((record) => {
       const worker = workerMap.get(record.worker_id);
       return {
@@ -203,6 +210,7 @@ async function incidentViewData(branchFilter = '') {
     .sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
   const attentionCalls = attentionCallRows
     .filter((record) => matchBranch(record.worker_id))
+    .filter(inRange)
     .map((record) => {
       const worker = workerMap.get(record.worker_id);
       return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };
@@ -210,6 +218,7 @@ async function incidentViewData(branchFilter = '') {
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   const jobAbandonments = jobAbandonmentRows
     .filter((record) => matchBranch(record.worker_id))
+    .filter(inRange)
     .map((record) => {
       const worker = workerMap.get(record.worker_id);
       return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };
@@ -217,6 +226,7 @@ async function incidentViewData(branchFilter = '') {
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   const medicalWithdrawals = medicalWithdrawalRows
     .filter((record) => matchBranch(record.worker_id))
+    .filter(inRange)
     .map((record) => {
       const worker = workerMap.get(record.worker_id);
       return { ...record, full_name: worker?.full_name || 'Trabajador no encontrado', cedula: worker?.cedula || '', branch: worker?.branch || '' };

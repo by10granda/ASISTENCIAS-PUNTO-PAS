@@ -10,6 +10,8 @@
     </div>
     <form class="inline-form" method="get">
       <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <input type="date" name="from" value="<%= from %>" title="Desde">
+      <input type="date" name="to" value="<%= to %>" title="Hasta">
       <button>Aplicar</button>
     </form>
   </div>

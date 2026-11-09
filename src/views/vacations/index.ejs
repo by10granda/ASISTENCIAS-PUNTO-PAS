@@ -23,6 +23,8 @@
     <div class="export-actions">
       <form class="inline-form" method="get">
         <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+        <input type="date" name="from" value="<%= from %>" title="Desde">
+        <input type="date" name="to" value="<%= to %>" title="Hasta">
         <button>Aplicar</button>
       </form>
       <a class="button ghost" href="/vacaciones/excel?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>

@@ -45,14 +45,18 @@ workersRouter.get('/pdf', async (req, res, next) => {
 async function workerViewData(query) {
   const q = clean(query.q).toLowerCase();
   const branch = clean(query.branch);
+  const from = clean(query.from);
+  const to = clean(query.to);
   const allWorkers = await listWorkers();
   const branchNames = [...new Set(allWorkers.map((w) => w.branch).filter(Boolean))].sort();
   const workers = allWorkers
     .filter((worker) => !q || [worker.full_name, worker.cedula, worker.position, worker.branch].some((value) => value.toLowerCase().includes(q)))
     .filter((worker) => !branch || worker.branch === branch)
+    .filter((worker) => !from || worker.hire_date >= from)
+    .filter((worker) => !to || worker.hire_date <= to)
     .sort((a, b) => `${a.status}-${a.full_name}`.localeCompare(`${b.status}-${b.full_name}`));
-  const exportQuery = new URLSearchParams(Object.entries({ q: clean(query.q), branch }).filter(([, value]) => value)).toString();
-  return { workers, q: clean(query.q), branch, branches: branchNames, exportQuery };
+  const exportQuery = new URLSearchParams(Object.entries({ q: clean(query.q), branch, from, to }).filter(([, value]) => value)).toString();
+  return { workers, q: clean(query.q), branch, from, to, branches: branchNames, exportQuery };
 }
 
 workersRouter.get('/new', async (req, res, next) => {

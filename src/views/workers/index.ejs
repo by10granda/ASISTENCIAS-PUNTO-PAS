@@ -5,6 +5,8 @@
     <form class="inline-form" method="get">
       <input type="search" name="q" value="<%= q %>" placeholder="Buscar por nombre, cedula, cargo o sucursal">
       <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <input type="date" name="from" value="<%= from %>" title="Ingreso desde">
+      <input type="date" name="to" value="<%= to %>" title="Ingreso hasta">
       <button>Aplicar</button>
     </form>
     <div class="export-actions">

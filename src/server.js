@@ -83,7 +83,9 @@ app.get('/panel/pdf', async (req, res, next) => {
 async function buildDashboardData(query) {
   const date = today();
   const month = currentMonth();
-  const { start, end } = monthRange(month);
+  const defaultRange = monthRange(month);
+  const from = clean(query.from) || defaultRange.start;
+  const to = clean(query.to) || defaultRange.end;
   const branch = clean(query.branch);
   const [allWorkers, allAttendance, allVacations, allDeductions] = await Promise.all([listWorkers(), listAttendance(), listVacations(), listVacationDeductions()]);
   const branches = [...new Set(allWorkers.map((worker) => worker.branch).filter(Boolean))].sort();
@@ -94,7 +96,7 @@ async function buildDashboardData(query) {
   const vacations = allVacations.filter(belongsToBranch);
   const deductions = allDeductions.filter(belongsToBranch);
   const todayRecords = attendance.filter((record) => record.record_date === date);
-  const monthRecords = attendance.filter((record) => record.record_date >= start && record.record_date <= end);
+  const monthRecords = attendance.filter((record) => record.record_date >= from && record.record_date <= to);
   const counts = {
     active_workers: workers.filter((worker) => worker.status === 'Activo').length,
     present_today: count(todayRecords, 'ASISTENCIA NORMAL'),
@@ -199,7 +201,8 @@ async function buildDashboardData(query) {
     console.error('[dashboard] Error calculando graficas:', e.message);
   }
 
-  return { counts, monthly, month, vacationRanges, summary, lowVacation, balanceDate, branch, branches, chartMonths, topUnjustified, chartBranch };
+  const exportQuery = new URLSearchParams(Object.entries({ branch, from, to }).filter(([, value]) => value)).toString();
+  return { counts, monthly, month, start: from, end: to, vacationRanges, summary, lowVacation, balanceDate, branch, branches, exportQuery, chartMonths, topUnjustified, chartBranch };
 }
 
 const dashboardBalanceColumns = [
@@ -227,8 +230,8 @@ function dashboardExport(table, data) {
     };
   }
   return {
-    filename: `panel-resumen-mensual-${data.month}`,
-    title: `Resumen mensual ${data.month}`,
+    filename: `panel-resumen-${data.start}-${data.end}`,
+    title: `Resumen del ${data.start} al ${data.end}`,
     columns: dashboardSummaryColumns,
     rows: data.monthly
   };
