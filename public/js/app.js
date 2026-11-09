@@ -101,14 +101,27 @@ if (quickForm) {
   function updateQuickLate(row) {
     const cell = row.querySelector('.quick-late');
     if (!cell) return;
+    const status = row.querySelector('.quick-status')?.value || '';
     const entry = row.querySelector('.quick-time')?.value || '';
+    const lunchOut = row.querySelector('.quick-lunch-out')?.value || '';
+    const lunchIn = row.querySelector('.quick-lunch-in')?.value || '';
     const exit = row.querySelector('.quick-exit-time')?.value || '';
 
     const expEntry = quickExpectedEntry?.value || '07:00';
+    const scheduled = row.querySelector('.quick-row-scheduled')?.value || quickScheduled?.value || '';
 
     let lateMinutes = 0;
-    if (entry && expEntry) lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(expEntry), 0);
-    // Salida: solo penaliza si se va ANTES de las 18:00 (se sobreentiende que salen a las 18).
+    if (status === 'ATRASO' && scheduled && entry) {
+      lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(scheduled), 0);
+    } else if (entry) {
+      lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(expEntry), 0);
+    }
+    // Almuerzo: puede ser a cualquier hora del dia; solo suma si dura mas de 60 minutos.
+    if (lunchOut && lunchIn) {
+      const lunchMinutes = timeToMinutes(lunchIn) - timeToMinutes(lunchOut);
+      if (lunchMinutes > 60) lateMinutes += lunchMinutes - 60;
+    }
+    // Salida: solo suma si se va ANTES de las 18:00.
     if (exit) lateMinutes += Math.max(timeToMinutes('18:00') - timeToMinutes(exit), 0);
 
     cell.textContent = lateMinutes > 0 ? `${lateMinutes} min` : '-';
@@ -154,6 +167,12 @@ if (quickForm) {
     input.addEventListener('input', () => {
       updateQuickLate(input.closest('tr'));
       updateQuickSummary();
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const lunchOut = input.closest('tr').querySelector('.quick-lunch-out');
+      if (lunchOut) lunchOut.focus();
     });
   });
   quickForm.querySelectorAll('.quick-lunch-out').forEach((input) => {

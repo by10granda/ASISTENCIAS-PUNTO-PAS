@@ -139,6 +139,9 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
       }
 
       const entry = entries[index] || '';
+      const lunchOut = lunchOuts[index] || '';
+      const lunchIn = lunchIns[index] || '';
+      const exit = exits[index] || '';
       const rowScheduled = rowSchedules[index] || '';
       const scheduledForRow = rowScheduled || scheduled;
       const observation = observations[index] || '';
@@ -148,10 +151,16 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         if (!scheduledForRow) errors.push('Ingrese la hora establecida para calcular los atrasos.');
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
         if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
+      } else if (entry) {
+        // Entrada: solo penaliza si se pasa de la hora esperada.
+        lateMinutes += minutesBetween(expectedEntry, entry);
       }
-      // Atraso por segmento: entrada si pasa de la esperada; salida si es ANTES de las 18:00.
-      if (entry) lateMinutes += minutesBetween(expectedEntry, entry);
-      if (exits[index]) lateMinutes += minutesBetween(exits[index], '18:00');
+      // Almuerzo: puede tomarse a cualquier hora del dia; solo penaliza si dura mas de 60 minutos.
+      if (lunchOut && lunchIn) {
+        lateMinutes += Math.max(minutesBetween(lunchOut, lunchIn) - 60, 0);
+      }
+      // Salida: solo penaliza si el trabajador se va ANTES de las 18:00.
+      if (exit) lateMinutes += minutesBetween(exit, '18:00');
       if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
       if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 
