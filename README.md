@@ -1,26 +1,72 @@
 # Control de Asistencia de Trabajadores
 
-Sistema web basico, moderno y responsive para registrar trabajadores, asistencia diaria, novedades, vacaciones, historial y reportes mensuales. Esta version guarda la informacion en Google Sheets y esta preparada para desplegar en Vercel.
+Sistema web basico, moderno y responsive para registrar trabajadores, asistencia diaria, novedades, vacaciones, historial y reportes mensuales. Esta version guarda la informacion en una base de datos SQLite local (integrada en Node.js) y puede publicarse en Internet con Cloudflare Tunnel. Tambien conserva soporte opcional para Google Sheets durante la transicion.
 
+Guia de migracion y Cloudflare Tunnel: `MIGRACION_BASE_DATOS.md`.
 Manual de uso: `MANUAL_USUARIO.md`.
 
 ## Analisis de requerimientos
 
-Para 35 trabajadores, Google Sheets es suficiente si el sistema lo usan pocos administradores. El volumen aproximado seria de 12.775 registros de asistencia por ano, muy por debajo del limite de Google Sheets.
+Con SQLite local el sistema soporta sin problema el volumen de 35 trabajadores (aproximadamente 12.775 registros de asistencia por ano) y no depende de limites ni cuotas de Google Sheets.
 
-El sistema mantiene una regla clave: un trabajador no debe tener dos registros de asistencia para la misma fecha. Como Sheets no tiene restricciones SQL, la aplicacion aplica esta regla buscando `worker_id + record_date`: si ya existe, actualiza la fila; si no existe, crea una nueva.
+El sistema mantiene una regla clave: un trabajador no debe tener dos registros de asistencia para la misma fecha. En SQLite se aplica con la restriccion `UNIQUE (worker_id, record_date)`, que funciona incluso si dos usuarios guardan al mismo tiempo. Con Google Sheets la regla se validaba solo desde la aplicacion.
 
 ## Estructura del sistema
 
 - `src/server.js`: configuracion de Express, dashboard y modulos.
-- `src/sheetsStore.js`: conexion y operaciones con Google Sheets.
+- `src/store.js`: selector de almacenamiento (`sqlite`, `remote` o `sheets`).
+- `src/dbStore.js`: conexion y operaciones con la base de datos SQLite local.
+- `src/remoteStore.js`: adaptador que consume la API del servidor (modo Vercel).
+- `src/apiServer.js`: API de datos que expone SQLite por Cloudflare Tunnel.
+- `src/sheetsStore.js`: conexion y operaciones con Google Sheets (opcional).
 - `src/routes/`: trabajadores, asistencia, vacaciones, historial y reportes.
 - `src/views/`: pantallas EJS.
 - `public/css` y `public/js`: estilos y comportamiento de formularios.
-- `api/index.js`: entrada serverless para Vercel.
-- `vercel.json`: reescritura de rutas hacia Vercel Functions.
+- `scripts/migrate-from-sheets.js`: copia los datos de Google Sheets a SQLite.
+- `scripts/backup.js`: genera un respaldo consistente de la base de datos.
+- `cloudflared/config.example.yml`: configuracion de ejemplo del tunel.
+- `ARQUITECTURA_VERCEL.md`: pagina en Vercel + base de datos en el servidor.
+- `PASOS_SERVIDOR.md`: pasos para ejecutar todo en el servidor Windows.
+- `api/index.js`: entrada serverless para Vercel (opcional).
+- `vercel.json`: reescritura de rutas hacia Vercel Functions (opcional).
 
-## Hojas de Google Sheets
+## Base de datos local (SQLite)
+
+Por defecto la aplicacion usa SQLite mediante el modulo integrado `node:sqlite`.
+No hay que instalar ningun motor ni abrir puertos: la base es un archivo
+`data/asistencias.db`.
+
+```bash
+npm install
+npm run migrate   # solo si viene de Google Sheets
+npm start
+```
+
+- Abrir `http://localhost:3000`.
+- `DATA_BACKEND=sqlite` es el valor por defecto.
+- `DATA_BACKEND=sheets` vuelve temporalmente a Google Sheets.
+- `npm run backup` crea una copia en `data/backups/`.
+- La tabla `attendance_records` tiene `UNIQUE (worker_id, record_date)`, por lo
+  que la base impide duplicados aunque dos usuarios guarden a la vez.
+
+Guia completa para Windows y Cloudflare Tunnel: `MIGRACION_BASE_DATOS.md`.
+
+## Pagina en Vercel + base de datos en el servidor
+
+Tambien es posible desplegar la pagina en Vercel desde GitHub y dejar la base
+SQLite en el servidor, comunicandose por Cloudflare Tunnel:
+
+```text
+Vercel (pagina) --HTTPS--> api.sudominio.com --Tunnel--> API :3001 --> SQLite
+```
+
+- En Vercel: `DATA_BACKEND=remote`, `STORE_API_URL` y `STORE_API_TOKEN`.
+- En el servidor: `npm run api` (API de datos) y el tunel apuntando al puerto 3001.
+- La pagina nunca accede al archivo de la base: solo a la API autenticada.
+
+Guia paso a paso: `ARQUITECTURA_VERCEL.md`.
+
+## Hojas de Google Sheets (opcional / legado)
 
 El sistema crea automaticamente estas hojas dentro del archivo configurado:
 
@@ -116,7 +162,23 @@ asistencias@mi-proyecto.iam.gserviceaccount.com
 
 ## Variables de entorno
 
-Crear estas variables en local y en Vercel:
+Variables principales (base de datos local):
+
+```text
+DATA_BACKEND=sqlite
+DATABASE_FILE=./data/asistencias.db
+APP_TIME_ZONE=America/Guayaquil
+```
+
+Autenticacion basica opcional si se publica en Internet:
+
+```text
+APP_USERNAME=admin
+APP_PASSWORD=UnaClaveLargaYSegura
+```
+
+Variables solo necesarias para migrar desde Google Sheets o usar
+`DATA_BACKEND=sheets`:
 
 ```text
 GOOGLE_SHEETS_ID=ID_DEL_ARCHIVO_DE_SHEETS
@@ -124,55 +186,60 @@ GOOGLE_SERVICE_ACCOUNT_EMAIL=correo-de-la-cuenta@proyecto.iam.gserviceaccount.co
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
-Importante: en Vercel, pegar `GOOGLE_PRIVATE_KEY` manteniendo los `\n` o usando el valor completo de `private_key` del JSON.
+Importante: mantener los `\n` dentro de `GOOGLE_PRIVATE_KEY` o usar el valor
+completo de `private_key` del JSON.
 
 ## Instalacion local
 
-1. Instalar Node.js 22.5 o superior.
+1. Instalar Node.js 22.5 o superior (recomendado Node.js 24 LTS).
 2. Instalar dependencias:
 
 ```bash
 npm install
 ```
 
-3. Configurar las variables de entorno.
+3. Copiar `.env.example` a `.env` y ajustar `DATABASE_FILE`, zona horaria y
+   credenciales de Google solo si va a migrar.
+4. Si viene de Google Sheets, copiar los datos:
 
-En PowerShell:
-
-```powershell
-$env:GOOGLE_SHEETS_ID="ID_DEL_ARCHIVO"
-$env:GOOGLE_SERVICE_ACCOUNT_EMAIL="correo@proyecto.iam.gserviceaccount.com"
-$env:GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```bash
+npm run migrate
 ```
 
-4. Ejecutar:
+5. Ejecutar:
 
 ```bash
 npm start
 ```
 
-5. Abrir:
+6. Abrir:
 
 ```text
 http://localhost:3000
 ```
 
-## Despliegue en Vercel
+## Despliegue con Cloudflare Tunnel
 
-1. Subir el proyecto a GitHub.
-2. Importar el repositorio en Vercel.
-3. Agregar las variables de entorno:
+La aplicacion esta pensada para ejecutarse en un servidor Windows y publicarse
+con Cloudflare Tunnel. Ver la guia paso a paso en `MIGRACION_BASE_DATOS.md`.
 
-```text
-GOOGLE_SHEETS_ID
-GOOGLE_SERVICE_ACCOUNT_EMAIL
-GOOGLE_PRIVATE_KEY
-```
+Resumen:
 
-4. Desplegar.
+1. `npm start` deja la aplicacion en `http://localhost:3000`.
+2. `cloudflared tunnel` publica solo la aplicacion (no la base de datos).
+3. El dominio queda con HTTPS sin abrir puertos en el router.
+
+Vercel ya no es necesario. Si se usa Vercel, la base SQLite local no es
+persistente alli; en ese caso se necesitaria una base remota.
 
 ## Notas importantes
 
-- Google Sheets funciona bien para este caso de 35 trabajadores.
-- Si dos usuarios guardan exactamente al mismo tiempo el mismo trabajador y fecha, Sheets no ofrece bloqueo transaccional como una base de datos SQL. Para uso administrativo normal es aceptable.
-- Si el sistema crece mucho, la mejor migracion seria Supabase PostgreSQL o Neon.
+- SQLite es gratuito, viene integrado en Node y soporta de sobra el volumen de
+  35 trabajadores.
+- La restriccion `UNIQUE (worker_id, record_date)` evita duplicados de asistencia
+  a nivel de base de datos.
+- No guarde la base de datos en una carpeta sincronizada con OneDrive, Dropbox o
+  Google Drive.
+- Programe `npm run backup` para tener copias en `data/backups/`.
+- Si el sistema crece mucho, la migracion natural seria PostgreSQL o MySQL; la
+  capa `src/dbStore.js` centraliza el acceso para facilitar ese cambio.

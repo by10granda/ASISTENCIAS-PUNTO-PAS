@@ -1,0 +1,22 @@
+# Configuracion de ejemplo para Cloudflare Tunnel en Windows.
+#
+# 1. Copie este archivo a:
+#    C:\Windows\System32\config\systemprofile\.cloudflared\config.yml
+#    (cuando cloudflared corre como servicio de Windows)
+#
+# 2. Reemplace <TUNNEL-ID> y asistencias.sudominio.com por sus datos reales.
+#
+# 3. Valide con:
+#    cloudflared.exe tunnel ingress validate
+
+tunnel: <TUNNEL-ID>
+credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\<TUNNEL-ID>.json
+
+ingress:
+  # La aplicacion Node escucha en el puerto 3000.
+  # El tunel solo publica la aplicacion, nunca la base de datos.
+  - hostname: asistencias.sudominio.com
+    service: http://localhost:3000
+  - service: http_status:404
+
+logfile: C:\Cloudflared\cloudflared.log

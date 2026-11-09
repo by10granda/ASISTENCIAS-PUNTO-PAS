@@ -9,7 +9,7 @@ import {
   listJobAbandonments,
   listMedicalWithdrawals,
   listWorkers
-} from '../sheetsStore.js';
+} from '../store.js';
 import { clean, requireText, today } from '../utils.js';
 
 export const incidentsRouter = Router();

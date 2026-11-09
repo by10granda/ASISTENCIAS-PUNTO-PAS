@@ -8,7 +8,7 @@ import { incidentsRouter } from './routes/incidents.js';
 import { reportsRouter } from './routes/reports.js';
 import { vacationsRouter } from './routes/vacations.js';
 import { workersRouter } from './routes/workers.js';
-import { initStore, listAttendance, listVacations, listWorkers } from './sheetsStore.js';
+import { initStore, listAttendance, listVacations, listWorkers } from './store.js';
 import { currentMonth, monthRange, today } from './utils.js';
 
 const app = express();
@@ -18,6 +18,24 @@ let initPromise;
 app.set('view engine', 'ejs');
 app.set('views', path.resolve('src/views'));
 app.use(express.urlencoded({ extended: true }));
+
+const appUser = process.env.APP_USERNAME;
+const appPassword = process.env.APP_PASSWORD;
+if (appUser && appPassword) {
+  app.use((req, res, next) => {
+    const [scheme, encoded] = (req.headers.authorization || '').split(' ');
+    if (scheme === 'Basic' && encoded) {
+      const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+      const separator = decoded.indexOf(':');
+      const user = decoded.slice(0, separator);
+      const password = decoded.slice(separator + 1);
+      if (user === appUser && password === appPassword) return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="Asistencias", charset="UTF-8"');
+    res.status(401).send('Autenticacion requerida.');
+  });
+}
+
 app.use(express.static(path.resolve('public')));
 
 app.use(async (req, res, next) => {

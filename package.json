@@ -5,9 +5,13 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "start": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --watch --experimental-sqlite --disable-warning=ExperimentalWarning src/server.js",
+    "api": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/apiServer.js",
+    "api:dev": "node --watch --experimental-sqlite --disable-warning=ExperimentalWarning src/apiServer.js",
+    "migrate": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/migrate-from-sheets.js",
+    "backup": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/backup.js",
+    "test": "node --experimental-sqlite --disable-warning=ExperimentalWarning --test"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

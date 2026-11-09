@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { findWorker, listAttendance, listWorkers, upsertAttendance } from '../sheetsStore.js';
+import { findWorker, listAttendance, listWorkers, upsertAttendance } from '../store.js';
 import { attendanceStatuses, clean, minutesBetween, requireText, today } from '../utils.js';
 
 export const attendanceRouter = Router();
