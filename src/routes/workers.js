@@ -8,10 +8,15 @@ export const workersRouter = Router();
 workersRouter.get('/', async (req, res, next) => {
   try {
     const q = clean(req.query.q).toLowerCase();
-    const workers = (await listWorkers())
+    const branch = clean(req.query.branch);
+    const allWorkers = await listWorkers();
+    const branches = await listBranches();
+    const branchNames = [...new Set(allWorkers.map((w) => w.branch).filter(Boolean))].sort();
+    const workers = allWorkers
       .filter((worker) => !q || [worker.full_name, worker.cedula, worker.position, worker.branch].some((value) => value.toLowerCase().includes(q)))
+      .filter((worker) => !branch || worker.branch === branch)
       .sort((a, b) => `${a.status}-${a.full_name}`.localeCompare(`${b.status}-${b.full_name}`));
-    res.render('workers/index', { title: 'Trabajadores', workers, q: clean(req.query.q) });
+    res.render('workers/index', { title: 'Trabajadores', workers, q: clean(req.query.q), branch, branches: branchNames });
   } catch (error) {
     next(error);
   }

@@ -4,7 +4,8 @@
   <div class="section-title">
     <form class="inline-form" method="get">
       <input type="search" name="q" value="<%= q %>" placeholder="Buscar por nombre, cedula, cargo o sucursal">
-      <button>Buscar</button>
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <button>Aplicar</button>
     </form>
     <a class="button" href="/trabajadores/new">Registrar trabajador</a>
   </div>

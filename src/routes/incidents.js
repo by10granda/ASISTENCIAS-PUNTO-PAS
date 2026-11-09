@@ -138,8 +138,8 @@ async function incidentViewData(branchFilter = '') {
     .filter((worker) => !branchFilter || worker.branch === branchFilter)
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
   const branches = [...new Set(allWorkers.map((worker) => worker.branch).filter(Boolean))].sort();
-  const attendances = attendanceRecords
-    .filter((record) => record.status === 'FALTA JUSTIFICADA')
+  const absences = attendanceRecords
+    .filter((record) => record.status === 'FALTA JUSTIFICADA' || record.status === 'FALTA INJUSTIFICADA')
     .filter((record) => matchBranch(record.worker_id))
     .map((record) => ({
       ...record,
@@ -159,7 +159,7 @@ async function incidentViewData(branchFilter = '') {
     .filter((record) => matchBranch(record.worker_id))
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
-  return { workers, branches, attendances, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
+  return { workers, branches, absences, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
 }
 
 async function validateAttentionCall(record) {
