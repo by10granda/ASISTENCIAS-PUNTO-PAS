@@ -11,10 +11,11 @@
   .dash-hero a { color: #fff; font-weight: 700; }
 
   .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-  .card.kpi { text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); border-left: 5px solid var(--primary); transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
+  .card.kpi { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; font: inherit; color: inherit; white-space: normal; cursor: pointer; border: 1px solid var(--line); border-left: 5px solid var(--primary); transition: transform .16s ease, box-shadow .16s ease, background .16s ease; }
   .card.kpi:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(32,43,72,.14); }
   .card.kpi.active { background: #eef4ff; box-shadow: 0 0 0 2px rgba(36,84,214,.35), 0 16px 34px rgba(32,43,72,.14); }
-  .card.kpi span { display: block; }
+  .card.kpi > span { display: block; font-size: .85rem; font-weight: 700; line-height: 1.25; }
+  .card.kpi > strong { display: block; margin-top: 6px; font-size: 2rem; line-height: 1.05; }
   .card.kpi small { display: block; margin-top: 4px; color: var(--muted); font-weight: 700; font-size: .78rem; }
   .card.kpi .kpi-hint { margin-top: 10px; font-size: .68rem; letter-spacing: .03em; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
   .card.kpi.active .kpi-hint { color: var(--primary); }
@@ -90,29 +91,6 @@
   <button type="button" class="card kpi" data-kpi="vacation_range"><span>Vacaciones (rango)</span><strong><%= summary.vacation_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
   <button type="button" class="card kpi" data-kpi="permit_range"><span>Permisos (rango)</span><strong><%= summary.permit_month || 0 %></strong><span class="kpi-hint">Ver detalle</span></button>
 </section>
-
-<% if (lowVacation && lowVacation.length) { %>
-<section class="panel danger-zone">
-  <div class="section-title">
-    <div>
-      <h2>Atencion: saldo de vacaciones bajo o negativo</h2>
-      <p>Estos trabajadores ya consumieron sus dias disponibles al <%= balanceDate %>.</p>
-    </div>
-    <div class="export-actions">
-      <a class="button ghost" href="/panel/excel?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar Excel</a>
-      <a class="button ghost" href="/panel/pdf?table=saldo<%= exportQuery ? '&' + exportQuery : '' %>">Descargar PDF</a>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Trabajador</th><th>Sucursal</th><th>Generados</th><th>Usados</th><th>Disponibles</th></tr></thead>
-      <tbody>
-        <% lowVacation.forEach((w) => { %><tr><td><%= w.full_name %></td><td><%= w.branch || '-' %></td><td><%= w.earned_days || 0 %></td><td><%= w.used_days || 0 %></td><td><strong class="text-danger"><%= w.available_days || 0 %></strong></td></tr><% }) %>
-      </tbody>
-    </table>
-  </div>
-</section>
-<% } %>
 
 <div class="charts-grid">
   <div class="chart-card wide">
