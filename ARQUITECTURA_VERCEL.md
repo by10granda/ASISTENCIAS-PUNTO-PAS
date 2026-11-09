@@ -15,12 +15,18 @@ Esta es la configuracion que permite:
 | Usuario / clave | `admin` / `admin` |
 | Proyecto Vercel | `punto-pas/asistencias-punto-pas` |
 | Repositorio | GitHub `by10granda/ASISTENCIAS-PUNTO-PAS`, rama `main` |
-| API del servidor | `https://continually-staying-commissioners-terrorism.trycloudflare.com` |
+| API del servidor | `https://asistencias-pas.tail6b95f3.ts.net` (Tailscale Funnel) |
 | Base de datos | `C:\asistencias\data\asistencias.db` |
 
-> La URL de la API es un **tunel rapido** de Cloudflare: cambia si se cierra o
-> reinicia la ventana de `cloudflared`. Cuando cambie, actualice `STORE_API_URL`
-> en Vercel (Settings -> Environment Variables) y vuelva a desplegar.
+> La API se publica con **Tailscale Funnel**: URL HTTPS fija, sin dominio propio
+> y sin abrir puertos en el router. El servicio corre en el servidor como:
+>
+> ```powershell
+> & "C:\Program Files\Tailscale\tailscale.exe" funnel --bg 3001
+> ```
+>
+> El tunel rapido de Cloudflare (`trycloudflare.com`) ya no se usa; su URL
+> cambiaba cada vez que se reiniciaba la ventana de `cloudflared`.
 
 ### Como desplegar
 
@@ -30,6 +36,11 @@ en produccion. No hace falta ejecutar comandos ni abrir el panel.
 ```bash
 git push origin main
 ```
+
+### Si cambia la URL de la API
+
+Edite `STORE_API_URL` en Vercel (Settings -> Environment Variables) y haga un
+`git push` vacio o un Redeploy para que la funcion tome el nuevo valor.
 
 ## Como funciona
 
