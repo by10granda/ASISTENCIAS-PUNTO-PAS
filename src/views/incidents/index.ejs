@@ -4,12 +4,26 @@
 <section class="panel">
   <div class="section-title">
     <div>
+      <h2>Novedades</h2>
+      <p>Viendo <strong>todas</strong> las sucursales.</p>
+      <% if (typeof branch !== 'undefined' && branch) { %><p class="text-muted">Filtrado por <strong><%= branch %></strong>. <a href="/novedades">Quitar filtro</a></p><% } %>
+    </div>
+    <form class="inline-form" method="get">
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <button>Aplicar</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <div>
       <h2>Descargar novedades</h2>
       <p>Exporta llamados de atencion y abandonos de trabajo en un solo archivo.</p>
     </div>
     <div class="export-actions">
-      <a class="button ghost" href="/novedades/excel">Descargar Excel</a>
-      <a class="button ghost" href="/novedades/pdf">Descargar PDF</a>
+      <a class="button ghost" href="/novedades/excel<%= branch ? `?branch=${encodeURIComponent(branch)}` : '' %>">Descargar Excel</a>
+      <a class="button ghost" href="/novedades/pdf<%= branch ? `?branch=${encodeURIComponent(branch)}` : '' %>">Descargar PDF</a>
     </div>
   </div>
 </section>
@@ -51,6 +65,19 @@
     <label class="span-2">Detalle<textarea required name="description" rows="3" placeholder="Detalle del retiro del trabajador"></textarea></label>
     <div class="actions"><button>Guardar retiro</button></div>
   </form>
+</section>
+
+<section class="panel">
+  <h2>Historial de justificaciones por falta (con motivo y documento)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Sucursal</th><th>Motivo de la justificacion</th><th>Documento de respaldo</th><th>Usuario</th></tr></thead>
+      <tbody>
+        <% if (!attendances.length) { %><tr><td colspan="6" class="empty">No hay faltas justificadas registradas.</td></tr><% } %>
+        <% attendances.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.branch || '-' %></td><td><%= record.justified_reason || '-' %></td><td><span class="pill <%= record.has_support_doc ? 'success' : '' %>"><%= Number(record.has_support_doc) ? 'Con documento' : 'Sin documento' %></span></td><td><%= record.registered_by || '-' %></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section class="panel">

@@ -5,6 +5,7 @@ import {
   createJobAbandonment,
   createMedicalWithdrawal,
   findWorker,
+  listAttendance,
   listAttentionCalls,
   listJobAbandonments,
   listMedicalWithdrawals,
@@ -28,8 +29,9 @@ const incidentColumns = [
 
 incidentsRouter.get('/', async (req, res, next) => {
   try {
-    const data = await incidentViewData();
-    res.render('incidents/index', { title: 'Novedades', ...data, errors: [] });
+    const branch = clean(req.query.branch);
+    const data = await incidentViewData(branch);
+    res.render('incidents/index', { title: 'Novedades', branch, ...data, errors: [] });
   } catch (error) {
     next(error);
   }
@@ -37,7 +39,7 @@ incidentsRouter.get('/', async (req, res, next) => {
 
 incidentsRouter.get('/excel', async (req, res, next) => {
   try {
-    const data = await incidentViewData();
+    const data = await incidentViewData(clean(req.query.branch));
     sendExcel(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
   } catch (error) {
     next(error);
@@ -46,7 +48,7 @@ incidentsRouter.get('/excel', async (req, res, next) => {
 
 incidentsRouter.get('/pdf', async (req, res, next) => {
   try {
-    const data = await incidentViewData();
+    const data = await incidentViewData(clean(req.query.branch));
     sendPdf(res, 'novedades-trabajadores', 'Novedades de trabajadores', incidentColumns, buildExportRows(data));
   } catch (error) {
     next(error);
@@ -64,8 +66,8 @@ incidentsRouter.post('/llamados', async (req, res, next) => {
     };
     const errors = await validateAttentionCall(record);
     if (errors.length) {
-      const data = await incidentViewData();
-      return res.status(422).render('incidents/index', { title: 'Novedades', ...data, errors });
+      const data = await incidentViewData(clean(req.body.branch));
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
     }
 
     await createAttentionCall(record);
@@ -87,8 +89,8 @@ incidentsRouter.post('/abandonos', async (req, res, next) => {
     };
     const errors = await validateJobAbandonment(record);
     if (errors.length) {
-      const data = await incidentViewData();
-      return res.status(422).render('incidents/index', { title: 'Novedades', ...data, errors });
+      const data = await incidentViewData(clean(req.body.branch));
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
     }
 
     await createJobAbandonment(record);
@@ -111,8 +113,8 @@ incidentsRouter.post('/retiros', async (req, res, next) => {
     };
     const errors = await validateMedicalWithdrawal(record);
     if (errors.length) {
-      const data = await incidentViewData();
-      return res.status(422).render('incidents/index', { title: 'Novedades', ...data, errors });
+      const data = await incidentViewData(clean(req.body.branch));
+      return res.status(422).render('incidents/index', { title: 'Novedades', branch: clean(req.body.branch), ...data, errors });
     }
 
     await createMedicalWithdrawal(record);
@@ -122,20 +124,42 @@ incidentsRouter.post('/retiros', async (req, res, next) => {
   }
 });
 
-async function incidentViewData() {
-  const workers = (await listWorkers()).filter((worker) => worker.status === 'Activo').sort((a, b) => a.full_name.localeCompare(b.full_name));
-  const allWorkers = await listWorkers();
+async function incidentViewData(branchFilter = '') {
+  const [workers, allWorkers, attendanceRecords, attentionCallRows, jobAbandonmentRows, medicalWithdrawalRows] = await Promise.all([
+    listWorkers(), listWorkers(), listAttendance(), listAttentionCalls(), listJobAbandonments(), listMedicalWithdrawals()
+  ]);
   const workerMap = new Map(allWorkers.map((worker) => [worker.id, worker]));
-  const attentionCalls = (await listAttentionCalls())
+  const matchBranch = (workerId) => {
+    const worker = workerMap.get(workerId);
+    return !branchFilter || (worker && worker.branch === branchFilter);
+  };
+  const activeWorkers = workers
+    .filter((worker) => worker.status === 'Activo')
+    .filter((worker) => !branchFilter || worker.branch === branchFilter)
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+  const branches = [...new Set(allWorkers.map((worker) => worker.branch).filter(Boolean))].sort();
+  const attendances = attendanceRecords
+    .filter((record) => record.status === 'FALTA JUSTIFICADA')
+    .filter((record) => matchBranch(record.worker_id))
+    .map((record) => ({
+      ...record,
+      full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado',
+      branch: workerMap.get(record.worker_id)?.branch || ''
+    }))
+    .sort((a, b) => b.record_date.localeCompare(a.record_date) || a.full_name.localeCompare(b.full_name));
+  const attentionCalls = attentionCallRows
+    .filter((record) => matchBranch(record.worker_id))
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
-  const jobAbandonments = (await listJobAbandonments())
+  const jobAbandonments = jobAbandonmentRows
+    .filter((record) => matchBranch(record.worker_id))
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
-  const medicalWithdrawals = (await listMedicalWithdrawals())
+  const medicalWithdrawals = medicalWithdrawalRows
+    .filter((record) => matchBranch(record.worker_id))
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
-  return { workers, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
+  return { workers, branches, attendances, attentionCalls, jobAbandonments, medicalWithdrawals, today: today() };
 }
 
 async function validateAttentionCall(record) {

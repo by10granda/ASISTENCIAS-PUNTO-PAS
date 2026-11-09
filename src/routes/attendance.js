@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { findWorker, listAttendance, listWorkers, upsertAttendance } from '../store.js';
+import { findWorker, listAttendance, listBranches, listWorkers, upsertAttendance } from '../store.js';
 import { attendanceStatuses, clean, minutesBetween, requireText, today } from '../utils.js';
 
 export const attendanceRouter = Router();
@@ -7,8 +7,9 @@ export const attendanceRouter = Router();
 attendanceRouter.get('/', async (req, res, next) => {
   try {
     const date = clean(req.query.date) || today();
-    const { workers, records } = await attendanceViewData(date);
-    res.render('attendance/index', { title: 'Registro de asistencia', date, workers, records, statuses: attendanceStatuses, errors: [] });
+    const branch = clean(req.query.branch);
+    const { branches, workers, records } = await attendanceViewData(date, branch);
+    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, branches, workers, records, statuses: attendanceStatuses, errors: [] });
   } catch (error) {
     next(error);
   }
@@ -21,25 +22,33 @@ attendanceRouter.post('/', async (req, res, next) => {
     if (errors.length) return await renderAttendanceWithErrors(res, record.record_date, errors);
 
     await upsertAttendance(record);
-    res.redirect(`/asistencia?date=${record.record_date}`);
+    const branchQuery = clean(req.body.branch) ? `&branch=${encodeURIComponent(clean(req.body.branch))}` : '';
+    res.redirect(`/asistencia?date=${record.record_date}${branchQuery}`);
   } catch (error) {
     next(error);
   }
 });
 
-async function renderAttendanceWithErrors(res, date, errors) {
-  const data = await attendanceViewData(date);
-  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, ...data, statuses: attendanceStatuses, errors });
+async function renderAttendanceWithErrors(res, date, errors, branch = '') {
+  const data = await attendanceViewData(date, branch);
+  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, branches: data.branches, ...data, statuses: attendanceStatuses, errors });
 }
 
-async function attendanceViewData(date) {
-  const workers = (await listWorkers()).filter((worker) => worker.status === 'Activo').sort(byName);
-  const workerMap = new Map(workers.map((worker) => [worker.id, worker]));
-  const records = (await listAttendance())
+async function attendanceViewData(date, branch) {
+  const [branches, allWorkers, allRecords] = await Promise.all([listBranches(), listWorkers(), listAttendance()]);
+  const workers = allWorkers
+    .filter((worker) => worker.status === 'Activo')
+    .filter((worker) => !branch || worker.branch === branch)
+    .sort(byName);
+  const workerMap = new Map(allWorkers.map((worker) => [worker.id, worker]));
+  const workerBranch = new Map(allWorkers.map((worker) => [worker.id, worker.branch]));
+  const records = allRecords
     .filter((record) => record.record_date === date)
+    .filter((record) => !branch || workerBranch.get(record.worker_id) === branch)
     .map((record) => ({ ...record, full_name: workerMap.get(record.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
-  return { workers, records };
+  const branchNames = [...new Set([...branches.map((branch) => branch.name), ...allWorkers.map((worker) => worker.branch)])].filter(Boolean).sort();
+  return { branches: branchNames, workers, records };
 }
 
 function normalizeAttendance(body) {

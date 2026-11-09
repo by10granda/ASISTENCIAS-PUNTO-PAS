@@ -3,8 +3,15 @@
 
 <section class="panel">
   <div class="section-title">
-    <h2>Saldo de vacaciones al <%= balanceDate %></h2>
-    <p>15 dias calendario por cada ano cumplido desde la fecha de ingreso.</p>
+    <div>
+      <h2>Saldo de vacaciones al <%= balanceDate %></h2>
+      <p>15 dias calendario por cada ano cumplido desde la fecha de ingreso.</p>
+      <% if (typeof branch !== 'undefined' && branch) { %><p>Filtrado por <strong><%= branch %></strong>. <a href="/vacaciones">Quitar filtro</a></p><% } %>
+    </div>
+    <form class="inline-form" method="get">
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <button>Aplicar</button>
+    </form>
   </div>
   <div class="table-wrap">
     <table>

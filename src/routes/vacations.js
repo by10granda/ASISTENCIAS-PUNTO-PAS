@@ -7,8 +7,9 @@ export const vacationsRouter = Router();
 
 vacationsRouter.get('/', async (req, res, next) => {
   try {
-    const data = await vacationViewData();
-    res.render('vacations/index', { title: 'Vacaciones', ...data, errors: [] });
+    const branch = clean(req.query.branch);
+    const data = await vacationViewData(branch);
+    res.render('vacations/index', { title: 'Vacaciones', branch, ...data, errors: [] });
   } catch (error) {
     next(error);
   }
@@ -40,8 +41,9 @@ vacationsRouter.post('/', async (req, res, next) => {
     }
 
     if (errors.length) {
-      const data = await vacationViewData();
-      return res.status(422).render('vacations/index', { title: 'Vacaciones', ...data, errors });
+      const branch = clean(req.body.branch);
+      const data = await vacationViewData(branch);
+      return res.status(422).render('vacations/index', { title: 'Vacaciones', branch, ...data, errors });
     }
 
     await createVacation(vacation);
@@ -76,8 +78,9 @@ vacationsRouter.post('/bajas', async (req, res, next) => {
     }
 
     if (errors.length) {
-      const data = await vacationViewData();
-      return res.status(422).render('vacations/index', { title: 'Vacaciones', ...data, errors });
+      const branch = clean(req.body.branch);
+      const data = await vacationViewData(branch);
+      return res.status(422).render('vacations/index', { title: 'Vacaciones', branch, ...data, errors });
     }
 
     await createVacationDeduction(deduction);
@@ -87,19 +90,30 @@ vacationsRouter.post('/bajas', async (req, res, next) => {
   }
 });
 
-async function vacationViewData() {
+async function vacationViewData(branchFilter = '') {
   const [allWorkers, vacationRows, deductionRows] = await Promise.all([listWorkers(), listVacations(), listVacationDeductions()]);
-  const workers = allWorkers.filter((worker) => worker.status === 'Activo').sort((a, b) => a.full_name.localeCompare(b.full_name));
   const workerMap = new Map(allWorkers.map((worker) => [worker.id, worker]));
+  const branches = [...new Set(allWorkers.map((worker) => worker.branch).filter(Boolean))].sort();
+  const matchBranch = (workerId) => {
+    const worker = workerMap.get(workerId);
+    return !branchFilter || (worker && worker.branch === branchFilter);
+  };
+  const workers = allWorkers
+    .filter((worker) => worker.status === 'Activo')
+    .filter((worker) => !branchFilter || worker.branch === branchFilter)
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
   const vacations = vacationRows
+    .filter((vacation) => matchBranch(vacation.worker_id))
     .map((vacation) => ({ ...vacation, full_name: workerMap.get(vacation.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.start_date.localeCompare(a.start_date));
   const deductions = deductionRows
+    .filter((deduction) => matchBranch(deduction.worker_id))
     .map((deduction) => ({ ...deduction, full_name: workerMap.get(deduction.worker_id)?.full_name || 'Trabajador no encontrado' }))
     .sort((a, b) => b.record_date.localeCompare(a.record_date));
   const balanceDate = today();
   const balances = allWorkers
+    .filter((worker) => !branchFilter || worker.branch === branchFilter)
     .map((worker) => ({ ...worker, ...vacationBalance(worker, vacationRows, deductionRows, balanceDate) }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
-  return { vacations, deductions, balances, workers, balanceDate };
+  return { branches, vacations, deductions, balances, workers, balanceDate };
 }

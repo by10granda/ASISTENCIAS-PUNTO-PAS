@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
-import { listAttendance, listAttentionCalls, listJobAbandonments, listMedicalWithdrawals, listVacations, listWorkers } from '../store.js';
+import {
+  listAttendance,
+  listAttentionCalls,
+  listJobAbandonments,
+  listMedicalWithdrawals,
+  listVacations,
+  listWorkers
+} from '../store.js';
 import { currentMonth, monthRange } from '../utils.js';
 import { DEDUCTIBLE_VACATION_STATUSES, vacationDaysInRange } from '../vacationPolicy.js';
 
@@ -10,6 +17,7 @@ const reportColumns = [
   { header: 'Trabajador', key: 'full_name', width: 28 },
   { header: 'Cedula', key: 'cedula', width: 16 },
   { header: 'Sucursal', key: 'branch', width: 18 },
+  { header: 'Dias laborados', key: 'worked_days', width: 16 },
   { header: 'F. justificadas', key: 'justified_absences', width: 16 },
   { header: 'Faltas', key: 'unjustified_absences', width: 12 },
   { header: 'Atrasos', key: 'late_count', width: 12 },
@@ -85,6 +93,7 @@ async function buildReportData(query) {
 
 function buildTotals(report) {
   const totals = {
+    worked_days: sum(report, 'worked_days'),
     justified_absences: sum(report, 'justified_absences'),
     unjustified_absences: sum(report, 'unjustified_absences'),
     late_count: sum(report, 'late_count'),
@@ -95,7 +104,7 @@ function buildTotals(report) {
     job_abandonments: sum(report, 'job_abandonments'),
     medical_withdrawals: sum(report, 'medical_withdrawals')
   };
-  totals.records = totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments + totals.medical_withdrawals;
+  totals.records = totals.worked_days + totals.justified_absences + totals.unjustified_absences + totals.late_count + totals.vacation_days + totals.permits + totals.attention_calls + totals.job_abandonments + totals.medical_withdrawals;
   return totals;
 }
 
@@ -109,6 +118,7 @@ function buildWorkerReport(worker, records, vacations, attentionCalls, jobAbando
     full_name: worker.full_name,
     cedula: worker.cedula,
     branch: worker.branch,
+    worked_days: count(records, 'ASISTENCIA NORMAL') + count(records, 'ATRASO'),
     justified_absences: count(records, 'FALTA JUSTIFICADA'),
     unjustified_absences: count(records, 'FALTA INJUSTIFICADA'),
     late_count: count(records, 'ATRASO'),

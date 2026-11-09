@@ -5,11 +5,15 @@
   <div class="section-title">
     <div>
       <h2>Registro diario</h2>
-      <p>Actualmente esta viendo y registrando asistencia para la fecha: <strong><%= date %></strong></p>
+      <p>Actualmente esta viendo <strong><%= branch || 'todas las sucursales' %></strong> para la fecha: <strong><%= date %></strong></p>
     </div>
-    <form class="inline-form" method="get"><input id="attendanceDateFilter" type="date" name="date" value="<%= date %>"><button>Cambiar fecha</button></form>
+    <form class="inline-form" method="get">
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <input type="date" name="date" value="<%= date %>"><button>Aplicar</button>
+    </form>
   </div>
   <form method="post" action="/asistencia" class="form-grid confirm-important" id="attendanceForm">
+    <input type="hidden" name="branch" value="<%= branch %>">
     <label>Fecha del registro<input id="attendanceRecordDate" required type="date" name="record_date" value="<%= date %>"></label>
     <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %> - <%= w.branch %></option><% }) %></select></label>
     <label>Estado<select required name="status" id="statusSelect"><% statuses.forEach((s) => { %><option><%= s %></option><% }) %></select></label>
