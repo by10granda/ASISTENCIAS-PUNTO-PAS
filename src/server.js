@@ -9,7 +9,7 @@ import { reportsRouter } from './routes/reports.js';
 import { vacationsRouter } from './routes/vacations.js';
 import { workersRouter } from './routes/workers.js';
 import { initStore, listAttendance, listVacations, listWorkers, listVacationDeductions } from './store.js';
-import { currentMonth, monthRange, today, attendanceStatuses } from './utils.js';
+import { attendanceStatuses, clean, currentMonth, monthRange, today } from './utils.js';
 import { vacationBalance } from './vacationPolicy.js';
 
 const app = express();
@@ -55,7 +55,15 @@ app.get('/', async (req, res, next) => {
     const date = today();
     const month = currentMonth();
     const { start, end } = monthRange(month);
-    const [workers, attendance, vacations, deductions] = await Promise.all([listWorkers(), listAttendance(), listVacations(), listVacationDeductions()]);
+    const branch = clean(req.query.branch);
+    const [allWorkers, allAttendance, allVacations, allDeductions] = await Promise.all([listWorkers(), listAttendance(), listVacations(), listVacationDeductions()]);
+    const branches = [...new Set(allWorkers.map((worker) => worker.branch).filter(Boolean))].sort();
+    const branchWorkerIds = branch ? new Set(allWorkers.filter((worker) => worker.branch === branch).map((worker) => String(worker.id))) : null;
+    const belongsToBranch = (record) => !branchWorkerIds || branchWorkerIds.has(String(record.worker_id));
+    const workers = branch ? allWorkers.filter((worker) => worker.branch === branch) : allWorkers;
+    const attendance = allAttendance.filter(belongsToBranch);
+    const vacations = allVacations.filter(belongsToBranch);
+    const deductions = allDeductions.filter(belongsToBranch);
     const todayRecords = attendance.filter((record) => record.record_date === date);
     const monthRecords = attendance.filter((record) => record.record_date >= start && record.record_date <= end);
     const counts = {
@@ -171,6 +179,8 @@ app.get('/', async (req, res, next) => {
       summary,
       lowVacation,
       balanceDate,
+      branch,
+      branches,
       chartMonths,
       topUnjustified,
       chartBranch

@@ -1,6 +1,19 @@
 <%- include('partials/header') %>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<section class="panel">
+  <div class="section-title">
+    <div>
+      <h2>Panel principal</h2>
+      <% if (branch) { %><p>Filtrado por <strong><%= branch %></strong>. <a href="/">Quitar filtro</a></p><% } else { %><p>Viendo <strong>todas</strong> las sucursales.</p><% } %>
+    </div>
+    <form class="inline-form" method="get">
+      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
+      <button>Aplicar</button>
+    </form>
+  </div>
+</section>
+
 <style>
   .charts-grid {
     display: grid;
