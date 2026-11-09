@@ -66,7 +66,8 @@ Vercel (pagina) --HTTPS--> api.sudominio.com --Tunnel--> API :3001 --> SQLite
 
 Guia paso a paso: `ARQUITECTURA_VERCEL.md`.
 
-Sitio publicado: **https://asistencias-puntopas.vercel.app** (usuario `admin`).
+Sitio publicado: **https://asistencias-punto-pas.vercel.app** (usuario `admin`).
+Cada `git push` a `main` se despliega automaticamente en Vercel.
 
 ## Hojas de Google Sheets (opcional / legado)
 

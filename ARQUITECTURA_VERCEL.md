@@ -11,9 +11,10 @@ Esta es la configuracion que permite:
 
 | Elemento | Valor |
 |---|---|
-| Pagina publica | `https://asistencias-puntopas.vercel.app` |
+| Pagina publica | `https://asistencias-punto-pas.vercel.app` |
 | Usuario / clave | `admin` / `admin` |
-| Proyecto Vercel | `grandas-projects/asistencias-punto-pas` |
+| Proyecto Vercel | `punto-pas/asistencias-punto-pas` |
+| Repositorio | GitHub `by10granda/ASISTENCIAS-PUNTO-PAS`, rama `main` |
 | API del servidor | `https://continually-staying-commissioners-terrorism.trycloudflare.com` |
 | Base de datos | `C:\asistencias\data\asistencias.db` |
 
@@ -21,16 +22,14 @@ Esta es la configuracion que permite:
 > reinicia la ventana de `cloudflared`. Cuando cambie, actualice `STORE_API_URL`
 > en Vercel (Settings -> Environment Variables) y vuelva a desplegar.
 
-### Como volver a desplegar
+### Como desplegar
 
-Desde este equipo (la carpeta del proyecto):
+El proyecto esta conectado a GitHub: **cada `git push` a `main` despliega solo**
+en produccion. No hace falta ejecutar comandos ni abrir el panel.
 
 ```bash
-npx vercel@latest deploy --prod --yes
+git push origin main
 ```
-
-Vercel no esta conectado por GitHub a esta cuenta, asi que los cambios no se
-publican solos: hay que ejecutar el comando despues de cada `git push`.
 
 ## Como funciona
 
