@@ -1,18 +1,182 @@
 <%- include('../partials/header') %>
 <%- include('../partials/errors') %>
 
+<%
+  const statusLabels = {
+    'ASISTENCIA NORMAL': 'Asistencia normal',
+    'FALTA JUSTIFICADA': 'Falta justificada',
+    'FALTA INJUSTIFICADA': 'Falta injustificada',
+    'ATRASO': 'Atraso',
+    'VACACIONES': 'Vacaciones',
+    'PERMISO': 'Permiso'
+  };
+%>
+
+<% if (saved) { %>
+  <div class="alert success">Se guardaron <strong><%= saved %></strong> registro(s) de <strong><%= branch || 'la sucursal' %></strong> para el <strong><%= date %></strong>.</div>
+<% } %>
+
+<style>
+  .quick-empty { text-align: center; padding: 36px 18px; border: 1px dashed #c7d2e6; border-radius: 14px; background: #f8fafc; color: var(--muted); }
+  .quick-empty strong { display: block; color: #1e293b; margin-bottom: 4px; font-size: 1rem; }
+  .quick-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 12px 14px; border: 1px solid #e2e9f7; background: #f6f9ff; border-radius: 14px; margin-bottom: 12px; }
+  .quick-toolbar label { display: flex; flex-direction: column; gap: 5px; font-size: .7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .quick-toolbar input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .quick-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .quick-buttons button { padding: 9px 12px; font-size: .8rem; }
+  .quick-buttons .mark-present { background: var(--success); }
+  .quick-buttons .mark-present:hover { background: #0c7f59; }
+
+  .quick-table-wrap { max-height: 62vh; overflow: auto; border: 1px solid var(--line); border-radius: 14px; }
+  .quick-table { margin: 0; font-size: .84rem; }
+  .quick-table thead th { position: sticky; top: 0; z-index: 2; background: #eef4ff; font-size: .66rem; }
+  .quick-table td { padding: 6px 8px; vertical-align: middle; }
+  .quick-table select, .quick-table input[type="time"], .quick-table input[type="text"] { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 9px; font-size: .82rem; background: #fff; color: var(--text); }
+  .quick-table input[readonly] { background: #f3f5f9; color: #9aa6b8; }
+  .quick-table .worker-cell strong { display: block; font-size: .86rem; }
+  .quick-table .worker-cell small { color: var(--muted); font-size: .72rem; }
+  .quick-late { text-align: center; font-weight: 800; color: #c27803; white-space: nowrap; }
+  .quick-table tr[data-status="ASISTENCIA NORMAL"] { background: #f3fcf8; }
+  .quick-table tr[data-status="ATRASO"] { background: #fffaf0; }
+  .quick-table tr[data-status="FALTA JUSTIFICADA"] { background: #f5f9ff; }
+  .quick-table tr[data-status="FALTA INJUSTIFICADA"] { background: #fff5f6; }
+  .quick-table tr[data-status="VACACIONES"] { background: #faf7ff; }
+  .quick-table tr[data-status="PERMISO"] { background: #f2fdff; }
+
+  .cert-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #e8fbf4; color: #0f9f6e; font-size: .68rem; font-weight: 800; text-decoration: none; margin-bottom: 4px; }
+  .cert-pick { display: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: #eef2f8; cursor: pointer; font-size: .95rem; }
+  .cert-pick:hover { background: #e2e8f3; }
+  .cert-pick input { display: none; }
+  tr[data-status="FALTA JUSTIFICADA"] .cert-pick { display: inline-flex; }
+  .cert-name { display: block; font-size: .62rem; color: var(--muted); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .quick-actions { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; box-shadow: 0 -10px 24px rgba(32, 43, 72, .08); }
+  .quick-actions span { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .quick-actions button { padding: 11px 20px; }
+  .quick-help { font-size: .76rem; color: var(--muted); margin: 0 0 10px; }
+  .quick-help kbd { background: #eef2f8; border-radius: 5px; padding: 1px 5px; font-size: .72rem; font-weight: 700; }
+
+  @media (max-width: 900px) {
+    .quick-toolbar { flex-direction: column; align-items: stretch; }
+    .quick-buttons { margin-left: 0; }
+    .quick-table { min-width: 820px; }
+  }
+</style>
+
 <section class="panel">
   <div class="section-title">
     <div>
-      <h2>Registro diario</h2>
-      <p>Actualmente esta viendo <strong><%= branch || 'todas las sucursales' %></strong> para la fecha: <strong><%= date %></strong></p>
+      <h2>Registro rápido por sucursal</h2>
+      <p>Elige una sucursal y se despliega la tabla de sus trabajadores para llenarla y guardar todo de una vez.</p>
     </div>
-    <form class="inline-form" method="get">
-      <select name="branch"><option value="">Todas las sucursales</option><% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %></select>
-      <input type="date" name="date" value="<%= date %>"><button>Aplicar</button>
+    <form class="inline-form" method="get" action="/asistencia" id="quickFilterForm">
+      <select name="branch" id="quickBranch">
+        <option value="">Seleccione sucursal...</option>
+        <% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %>
+      </select>
+      <input type="date" name="date" id="quickDate" value="<%= date %>">
+      <button>Abrir tabla</button>
     </form>
   </div>
-  <form method="post" action="/asistencia" class="form-grid confirm-important" id="attendanceForm">
+
+  <% if (!branch) { %>
+    <div class="quick-empty">
+      <strong>Selecciona una sucursal para comenzar</strong>
+      <p>La tabla mostrará a todos los trabajadores activos de esa sucursal con su estado del día.</p>
+    </div>
+  <% } else if (!workerRows.length) { %>
+    <div class="quick-empty">
+      <strong>No hay trabajadores activos en <%= branch %></strong>
+      <p>Revisa el módulo de Trabajadores o elige otra sucursal.</p>
+    </div>
+  <% } else { %>
+    <p class="quick-help">
+      Atajo: <kbd>Marcar pendientes presentes</kbd> llena a todos los no registrados con la hora general; luego solo cambia las excepciones (faltas, atrasos, permisos).
+    </p>
+    <form method="post" action="/asistencia/rapido" id="quickForm">
+      <input type="hidden" name="record_date" value="<%= date %>">
+      <input type="hidden" name="branch" value="<%= branch %>">
+
+      <div class="quick-toolbar">
+        <label>Hora de entrada general
+          <input type="time" id="quickEntryTime" value="08:00">
+        </label>
+        <label>Hora establecida (atrasos)
+          <input type="time" name="scheduled_entry_time" id="quickScheduled" value="08:00">
+        </label>
+        <label>Usuario que registra
+          <input name="registered_by" value="Administrador" required>
+        </label>
+        <div class="quick-buttons">
+          <button type="button" class="button ghost" id="quickApplyTime">Aplicar hora a presentes</button>
+          <button type="button" class="button mark-present" id="quickMarkPresent">Marcar pendientes presentes</button>
+          <button type="button" class="button ghost" id="quickClear">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="table-wrap quick-table-wrap">
+        <table class="quick-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Trabajador</th>
+              <th>Estado</th>
+              <th>Hora entrada</th>
+              <th>Atraso</th>
+              <th>Motivo / observación</th>
+              <th>Certificado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% workerRows.forEach((item, index) => { const w = item.worker; const r = item.record; %>
+              <tr data-worker="<%= w.id %>" data-status="<%= r ? r.status : '' %>" data-saved="<%= r ? 1 : 0 %>" data-scheduled="<%= r && r.status === 'ATRASO' ? (r.scheduled_entry_time || '') : '' %>">
+                <td><%= index + 1 %></td>
+                <td class="worker-cell">
+                  <strong><%= w.full_name %></strong>
+                  <small><%= w.cedula %><% if (r) { %> &middot; ya guardado<% } %></small>
+                </td>
+                <td>
+                  <input type="hidden" name="worker_id" value="<%= w.id %>">
+                  <select name="status" class="quick-status">
+                    <option value="">Sin registrar</option>
+                    <% statuses.forEach((s) => { %>
+                      <option value="<%= s %>" <%= r && r.status === s ? 'selected' : '' %>><%= statusLabels[s] || s %></option>
+                    <% }) %>
+                  </select>
+                </td>
+                <td>
+                  <input type="time" name="entry_time" class="quick-time" value="<%= r ? (r.actual_arrival_time || r.entry_time || '') : '' %>">
+                  <input type="hidden" name="row_scheduled" class="quick-row-scheduled" value="<%= r && r.status === 'ATRASO' ? (r.scheduled_entry_time || '') : '' %>">
+                </td>
+                <td class="quick-late"><%= r && r.late_minutes ? `${r.late_minutes} min` : '-' %></td>
+                <td><input type="text" name="observation" class="quick-obs" placeholder="Motivo u observación" value="<%= r ? (r.observation || r.justified_reason || r.permit_reason || '') : '' %>"></td>
+                <td>
+                  <% if (r && Number(r.has_support_doc)) { %>
+                    <a class="cert-chip" href="/asistencia/certificado?worker_id=<%= w.id %>&record_date=<%= date %>" target="_blank" rel="noopener">Ver</a>
+                  <% } %>
+                  <label class="cert-pick" title="Adjuntar imagen o PDF">&#128206;<input type="file" class="quick-cert-file" data-worker="<%= w.id %>" accept="image/png,image/jpeg,image/webp,application/pdf"></label>
+                  <small class="cert-name" data-cert-name="<%= w.id %>"></small>
+                  <input type="hidden" name="cert_<%= w.id %>_data" data-cert-data="<%= w.id %>">
+                  <input type="hidden" name="cert_<%= w.id %>_file_name" data-cert-file-name="<%= w.id %>">
+                  <input type="hidden" name="cert_<%= w.id %>_mime_type" data-cert-mime="<%= w.id %>">
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="quick-actions">
+        <span id="quickSummary">0 fila(s) con estado</span>
+        <button type="submit">Guardar toda la sucursal</button>
+      </div>
+    </form>
+  <% } %>
+</section>
+
+<details class="panel">
+  <summary><strong>Registro individual (opcional)</strong> &middot; para agregar o corregir un solo trabajador</summary>
+  <form method="post" action="/asistencia" class="form-grid confirm-important" id="attendanceForm" style="margin-top:16px">
     <input type="hidden" name="branch" value="<%= branch %>">
     <label>Fecha del registro<input id="attendanceRecordDate" required type="date" name="record_date" value="<%= date %>"></label>
     <label>Trabajador<select required name="worker_id"><option value="">Seleccione</option><% workers.forEach((w) => { %><option value="<%= w.id %>"><%= w.full_name %> - <%= w.branch %></option><% }) %></select></label>
@@ -34,11 +198,14 @@
     <input type="hidden" name="certificate_mime_type" id="certificateMimeType">
     <div class="actions"><button>Guardar asistencia</button></div>
   </form>
-</section>
+</details>
 
 <section class="panel">
   <div class="section-title">
-    <h2>Registros del dia</h2>
+    <div>
+      <h2>Registros del dia</h2>
+      <p><strong><%= records.length %></strong> registro(s) guardado(s) para <strong><%= branch || 'todas las sucursales' %></strong> el <strong><%= date %></strong>.</p>
+    </div>
     <div class="export-actions">
       <a class="button ghost" href="/asistencia/excel?<%= exportQuery %>">Descargar Excel</a>
       <a class="button ghost" href="/asistencia/pdf?<%= exportQuery %>">Descargar PDF</a>

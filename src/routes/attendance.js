@@ -10,12 +10,13 @@ import {
   saveCertificate,
   upsertAttendance
 } from '../store.js';
-import { attendanceStatuses, clean, minutesBetween, requireText, today } from '../utils.js';
+import { attendanceStatuses, clean, isValidDate, minutesBetween, requireText, today } from '../utils.js';
 
 export const attendanceRouter = Router();
 
 const allowedCertificateMimes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const maxCertificateBytes = 10 * 1024 * 1024;
+const maxBulkCertificateBytes = 30 * 1024 * 1024;
 
 const attendanceColumns = [
   { header: 'Fecha', key: 'record_date', width: 12 },
@@ -37,9 +38,10 @@ attendanceRouter.get('/', async (req, res, next) => {
   try {
     const date = clean(req.query.date) || today();
     const branch = clean(req.query.branch);
-    const { branches, workers, records } = await attendanceViewData(date, branch);
+    const saved = Number(clean(req.query.saved)) || 0;
+    const data = await attendanceViewData(date, branch);
     const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
-    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, branches, workers, records, statuses: attendanceStatuses, errors: [], exportQuery });
+    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, saved, ...data, statuses: attendanceStatuses, errors: [], exportQuery });
   } catch (error) {
     next(error);
   }
@@ -94,6 +96,114 @@ attendanceRouter.post('/', async (req, res, next) => {
   }
 });
 
+attendanceRouter.post('/rapido', async (req, res, next) => {
+  try {
+    const recordDate = clean(req.body.record_date);
+    const branch = clean(req.body.branch);
+    const registeredBy = clean(req.body.registered_by) || 'Administrador';
+    const scheduled = clean(req.body.scheduled_entry_time);
+    const ids = [].concat(req.body.worker_id || []).map((value) => clean(value));
+    const statuses = [].concat(req.body.status || []).map((value) => clean(value));
+    const entries = [].concat(req.body.entry_time || []).map((value) => clean(value));
+    const rowSchedules = [].concat(req.body.row_scheduled || []).map((value) => clean(value));
+    const observations = [].concat(req.body.observation || []).map((value) => clean(value));
+    const errors = [];
+    if (!requireText(recordDate) || !isValidDate(recordDate)) errors.push('Seleccione una fecha valida.');
+    if (!branch) errors.push('Seleccione una sucursal.');
+
+    const allWorkers = await listWorkers();
+    const workerMap = new Map(allWorkers.map((worker) => [String(worker.id), worker]));
+    const pending = [];
+    let certificateBytes = 0;
+
+    for (let index = 0; index < ids.length; index += 1) {
+      const workerId = ids[index];
+      const status = statuses[index] || '';
+      if (!status) continue;
+      const worker = workerMap.get(workerId);
+      const rowLabel = worker ? worker.full_name : `fila ${index + 1}`;
+      if (!worker || (branch && worker.branch !== branch)) {
+        errors.push(`${rowLabel}: no pertenece a la sucursal seleccionada.`);
+        continue;
+      }
+      if (!attendanceStatuses.includes(status)) {
+        errors.push(`${rowLabel}: estado no valido.`);
+        continue;
+      }
+
+      const entry = entries[index] || '';
+      const rowScheduled = rowSchedules[index] || '';
+      const scheduledForRow = rowScheduled || scheduled;
+      const observation = observations[index] || '';
+      let lateMinutes = 0;
+      if (status === 'ASISTENCIA NORMAL' && !entry) errors.push(`${rowLabel}: ingrese la hora de entrada.`);
+      if (status === 'ATRASO') {
+        if (!scheduledForRow) errors.push('Ingrese la hora establecida para calcular los atrasos.');
+        if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
+        if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
+      }
+      if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
+      if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
+
+      const certificate = normalizeBulkCertificate(req.body, workerId);
+      if (certificate && status !== 'FALTA JUSTIFICADA') errors.push(`${rowLabel}: el certificado solo aplica a faltas justificadas.`);
+      if (certificate && !allowedCertificateMimes.has(certificate.mime_type)) errors.push(`${rowLabel}: el certificado debe ser una imagen o un PDF.`);
+      if (certificate && certificate.size_bytes > maxCertificateBytes) errors.push(`${rowLabel}: el certificado supera los 10 MB.`);
+      certificateBytes += certificate ? certificate.size_bytes : 0;
+
+      pending.push({
+        worker_id: workerId,
+        record_date: recordDate,
+        status,
+        entry_time: status === 'ASISTENCIA NORMAL' ? entry : '',
+        scheduled_entry_time: status === 'ATRASO' ? scheduledForRow : '',
+        actual_arrival_time: status === 'ATRASO' ? entry : '',
+        late_minutes: status === 'ATRASO' ? lateMinutes : 0,
+        observation,
+        registered_by: registeredBy,
+        justified_reason: status === 'FALTA JUSTIFICADA' ? observation : '',
+        has_support_doc: certificate ? 1 : 0,
+        permit_time_out: '',
+        permit_time_return: '',
+        permit_reason: status === 'PERMISO' ? observation : '',
+        permit_full_day: status === 'PERMISO' ? 1 : 0,
+        _certificate: certificate
+      });
+    }
+
+    if (certificateBytes > maxBulkCertificateBytes) errors.push('Los certificados adjuntos superan el limite total de 30 MB por guardado.');
+    if (!pending.length && !errors.length) errors.push('No hay filas con estado para guardar.');
+
+    if (errors.length) {
+      return await renderAttendanceWithErrors(res, recordDate || today(), errors, branch);
+    }
+
+    for (const record of pending) {
+      const certificate = record._certificate;
+      delete record._certificate;
+      if (!certificate && record.status === 'FALTA JUSTIFICADA') {
+        const existing = await findCertificate(record.worker_id, record.record_date);
+        record.has_support_doc = existing ? 1 : 0;
+      }
+      await upsertAttendance(record);
+      if (certificate) {
+        await saveCertificate({
+          worker_id: record.worker_id,
+          record_date: record.record_date,
+          file_name: certificate.file_name,
+          mime_type: certificate.mime_type,
+          data_base64: certificate.data_base64,
+          uploaded_by: record.registered_by
+        });
+      }
+    }
+
+    res.redirect(`/asistencia?date=${encodeURIComponent(recordDate)}&branch=${encodeURIComponent(branch)}&saved=${pending.length}`);
+  } catch (error) {
+    next(error);
+  }
+});
+
 attendanceRouter.get('/certificado', async (req, res, next) => {
   try {
     const workerId = clean(req.query.worker_id);
@@ -114,7 +224,7 @@ attendanceRouter.get('/certificado', async (req, res, next) => {
 async function renderAttendanceWithErrors(res, date, errors, branch = '') {
   const data = await attendanceViewData(date, branch);
   const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
-  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
+  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, saved: 0, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
 }
 
 async function attendanceViewData(date, branch) {
@@ -140,7 +250,9 @@ async function attendanceViewData(date, branch) {
     })
     .sort((a, b) => a.full_name.localeCompare(b.full_name));
   const branchNames = [...new Set([...branches.map((branch) => branch.name), ...allWorkers.map((worker) => worker.branch)])].filter(Boolean).sort();
-  return { branches: branchNames, workers, records };
+  const recordByWorker = new Map(records.map((record) => [String(record.worker_id), record]));
+  const workerRows = workers.map((worker) => ({ worker, record: recordByWorker.get(String(worker.id)) || null }));
+  return { branches: branchNames, workers, records, workerRows };
 }
 
 async function attendanceExportData(query) {
@@ -179,6 +291,18 @@ function normalizeCertificateUpload(body) {
   return {
     file_name: clean(body.certificate_file_name) || `certificado-${clean(body.certificate_mime_type) === 'application/pdf' ? 'documento' : 'imagen'}`,
     mime_type: clean(body.certificate_mime_type),
+    data_base64: dataBase64,
+    size_bytes: Math.floor(dataBase64.length * 3 / 4)
+  };
+}
+
+function normalizeBulkCertificate(body, workerId) {
+  const dataBase64 = String(body[`cert_${workerId}_data`] || '').replace(/^data:[^;]*;base64,/, '');
+  if (!dataBase64) return null;
+  const mime = clean(body[`cert_${workerId}_mime_type`]);
+  return {
+    file_name: clean(body[`cert_${workerId}_file_name`]) || `certificado-${mime === 'application/pdf' ? 'documento' : 'imagen'}`,
+    mime_type: mime,
     data_base64: dataBase64,
     size_bytes: Math.floor(dataBase64.length * 3 / 4)
   };
