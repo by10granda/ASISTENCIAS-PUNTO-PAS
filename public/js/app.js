@@ -187,6 +187,15 @@ if (quickForm) {
       updateQuickSummary();
     });
   });
+  quickForm.querySelectorAll('.quick-exit-time').forEach((input) => {
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      const rows = quickRows();
+      const next = rows[rows.indexOf(input.closest('tr')) + 1];
+      if (next) next.querySelector('.quick-status')?.focus();
+    });
+  });
   quickForm.querySelectorAll('.quick-lunch-in').forEach((input) => {
     input.addEventListener('input', () => {
       updateQuickLate(input.closest('tr'));
@@ -236,6 +245,7 @@ if (quickForm) {
       row.querySelector('.quick-status').value = '';
       row.querySelector('.quick-obs').value = '';
       row.querySelector('.quick-lunch-in').value = '';
+      row.querySelector('.quick-exit-time').value = '';
       clearQuickCertificate(row);
       updateQuickRow(row);
     });

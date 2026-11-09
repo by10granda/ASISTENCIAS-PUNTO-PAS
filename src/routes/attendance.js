@@ -26,6 +26,7 @@ const attendanceColumns = [
   { header: 'Estado', key: 'status', width: 20 },
   { header: 'Entrada', key: 'entry_time', width: 10 },
   { header: 'Regreso almuerzo', key: 'lunch_in', width: 12 },
+  { header: 'Hora salida', key: 'exit_time', width: 10 },
   { header: 'Hora establecida', key: 'scheduled_entry_time', width: 12 },
   { header: 'Hora real', key: 'actual_arrival_time', width: 10 },
   { header: 'Min. atraso', key: 'late_minutes', width: 10 },
@@ -111,6 +112,7 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     const lunchLimit = clean(req.body.lunch_limit);
     const lunchOuts = [].concat(req.body.lunch_out || []).map((value) => clean(value));
     const lunchIns = [].concat(req.body.lunch_in || []).map((value) => clean(value));
+    const exits = [].concat(req.body.exit_time || []).map((value) => clean(value));
     const errors = [];
     if (!requireText(recordDate) || !isValidDate(recordDate)) errors.push('Seleccione una fecha valida.');
     if (!branch) errors.push('Seleccione una sucursal.');
@@ -177,6 +179,7 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         permit_full_day: status === 'PERMISO' ? 1 : 0,
         lunch_out: lunchLimit || lunchOuts[index] || '',
         lunch_in: lunchIn || '',
+        exit_time: exits[index] || '',
         _certificate: certificate
       });
     }
@@ -293,7 +296,8 @@ function normalizeAttendance(body) {
     permit_reason: status === 'PERMISO' ? clean(body.permit_reason) : '',
     permit_full_day: status === 'PERMISO' && body.permit_full_day ? 1 : 0,
     lunch_out: clean(body.lunch_out),
-    lunch_in: clean(body.lunch_in)
+    lunch_in: clean(body.lunch_in),
+    exit_time: clean(body.exit_time)
   };
 }
 
