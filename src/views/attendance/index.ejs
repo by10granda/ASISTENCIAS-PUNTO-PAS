@@ -104,6 +104,9 @@
         <label>Hora establecida (atrasos)
           <input type="time" name="scheduled_entry_time" id="quickScheduled" value="08:00">
         </label>
+        <label>Hora límite almuerzo
+          <input type="time" id="quickLunchLimit" name="lunch_limit" value="13:00">
+        </label>
         <label>Usuario que registra
           <input name="registered_by" value="Administrador" required>
         </label>
@@ -123,7 +126,6 @@
               <th>Estado</th>
               <th>Hora entrada</th>
               <th>Atraso</th>
-              <th>Salida almuerzo</th>
               <th>Regreso almuerzo</th>
               <th>Motivo / observación</th>
               <th>Certificado</th>
@@ -152,8 +154,7 @@
                   <input type="time" name="entry_time" class="quick-time" value="<%= r ? (r.actual_arrival_time || r.entry_time || '') : '' %>">
                   <input type="hidden" name="row_scheduled" class="quick-row-scheduled" value="<%= r && r.status === 'ATRASO' ? (r.scheduled_entry_time || '') : '' %>">
                 </td>
-                <td class="quick-late"><%= r && r.late_minutes ? `${r.late_minutes} min` : '-' %></td>
-                <td><input type="time" name="lunch_out" class="quick-lunch-out" value="<%= r ? r.lunch_out : '' %>"></td>
+                <td class="quick-late" data-late-base="<%= r && r.late_minutes ? r.late_minutes : 0 %>"><%= r && r.late_minutes ? `${r.late_minutes} min` : '-' %></td>
                 <td><input type="time" name="lunch_in" class="quick-lunch-in" value="<%= r ? r.lunch_in : '' %>"></td>
                 <td><input type="text" name="observation" class="quick-obs" enterkeyhint="next" autocomplete="off" placeholder="Motivo u observación" value="<%= r ? (r.observation || r.justified_reason || r.permit_reason || '') : '' %>"></td>
                 <td>
@@ -219,10 +220,10 @@
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Atraso</th><th>Salida almuerzo</th><th>Regreso almuerzo</th><th>Observacion</th><th>Certificado</th><th>Actualizado</th></tr></thead>
+      <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Atraso</th><th>Regreso almuerzo</th><th>Observacion</th><th>Certificado</th><th>Actualizado</th></tr></thead>
       <tbody>
-        <% if (!records.length) { %><tr><td colspan="9" class="empty">No hay registros para esta fecha.</td></tr><% } %>
-        <% records.forEach((r) => { %><tr><td><%= r.full_name %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.entry_time || r.actual_arrival_time || '-' %></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.lunch_out || '-' %></td><td><%= r.lunch_in || '-' %></td><td><%= r.observation || '-' %></td><td><% if (r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= r.worker_id %>&record_date=<%= r.record_date %>" target="_blank">Ver certificado</a><% } else { %>-<% } %></td><td><%= r.updated_at %></td></tr><% }) %>
+        <% if (!records.length) { %><tr><td colspan="8" class="empty">No hay registros para esta fecha.</td></tr><% } %>
+        <% records.forEach((r) => { %><tr><td><%= r.full_name %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.entry_time || r.actual_arrival_time || '-' %></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.lunch_in || '-' %></td><td><%= r.observation || '-' %></td><td><% if (r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= r.worker_id %>&record_date=<%= r.record_date %>" target="_blank">Ver certificado</a><% } else { %>-<% } %></td><td><%= r.updated_at %></td></tr><% }) %>
       </tbody>
     </table>
   </div>

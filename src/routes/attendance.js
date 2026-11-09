@@ -25,7 +25,6 @@ const attendanceColumns = [
   { header: 'Sucursal', key: 'branch', width: 16 },
   { header: 'Estado', key: 'status', width: 20 },
   { header: 'Entrada', key: 'entry_time', width: 10 },
-  { header: 'Salida almuerzo', key: 'lunch_out', width: 12 },
   { header: 'Regreso almuerzo', key: 'lunch_in', width: 12 },
   { header: 'Hora establecida', key: 'scheduled_entry_time', width: 12 },
   { header: 'Hora real', key: 'actual_arrival_time', width: 10 },
@@ -109,6 +108,7 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     const entries = [].concat(req.body.entry_time || []).map((value) => clean(value));
     const rowSchedules = [].concat(req.body.row_scheduled || []).map((value) => clean(value));
     const observations = [].concat(req.body.observation || []).map((value) => clean(value));
+    const lunchLimit = clean(req.body.lunch_limit);
     const lunchOuts = [].concat(req.body.lunch_out || []).map((value) => clean(value));
     const lunchIns = [].concat(req.body.lunch_in || []).map((value) => clean(value));
     const errors = [];
@@ -146,6 +146,10 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
         if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
       }
+      // Una sola hora de almuerzo (regreso real). Si se pasa del límite, ya son minutos de atraso.
+      const lunchIn = lunchIns[index] || '';
+      const lunchExcess = lunchLimit && lunchIn ? minutesBetween(lunchLimit, lunchIn) : 0;
+      if (lunchExcess > 0) lateMinutes += lunchExcess;
       if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
       if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 
@@ -162,7 +166,7 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         entry_time: status === 'ASISTENCIA NORMAL' ? entry : '',
         scheduled_entry_time: status === 'ATRASO' ? scheduledForRow : '',
         actual_arrival_time: status === 'ATRASO' ? entry : '',
-        late_minutes: status === 'ATRASO' ? lateMinutes : 0,
+        late_minutes: lateMinutes,
         observation,
         registered_by: registeredBy,
         justified_reason: status === 'FALTA JUSTIFICADA' ? observation : '',
@@ -171,8 +175,8 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         permit_time_return: '',
         permit_reason: status === 'PERMISO' ? observation : '',
         permit_full_day: status === 'PERMISO' ? 1 : 0,
-        lunch_out: lunchOuts[index] || '',
-        lunch_in: lunchIns[index] || '',
+        lunch_out: lunchLimit || lunchOuts[index] || '',
+        lunch_in: lunchIn || '',
         _certificate: certificate
       });
     }

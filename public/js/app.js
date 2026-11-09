@@ -90,11 +90,18 @@ if (quickForm) {
   const quickEntryTime = quickForm.querySelector('#quickEntryTime');
   const quickScheduled = quickForm.querySelector('#quickScheduled');
   const quickSummary = quickForm.querySelector('#quickSummary');
+  const quickLunchLimit = quickForm.querySelector('#quickLunchLimit');
   const quickRows = () => [...quickForm.querySelectorAll('tbody tr[data-worker]')];
 
   function timeToMinutes(value) {
     const [hours, minutes] = String(value || '').split(':').map(Number);
     return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
+  }
+  function minutesBetweenFront(start, end) {
+    if (!start || !end) return 0;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    return Math.max((eh * 60 + em) - (sh * 60 + sm), 0);
   }
 
   function updateQuickLate(row) {
@@ -105,11 +112,17 @@ if (quickForm) {
     const scheduledValue = row.dataset.scheduled || quickScheduled?.value || '';
     const scheduled = timeToMinutes(scheduledValue);
     const actual = timeToMinutes(time);
-    if (status !== 'ATRASO' || scheduled === null || actual === null) {
-      cell.textContent = '-';
-      return;
+    const lunchLimit = quickLunchLimit?.value;
+    const lunchIn = row.querySelector('.quick-lunch-in')?.value || '';
+    const lunchExcess = lunchLimit && lunchIn ? minutesBetweenFront(lunchLimit, lunchIn) : 0;
+
+    let entryLate = 0;
+    if (status === 'ATRASO' && scheduled !== null && actual !== null) {
+      entryLate = Math.max(actual - scheduled, 0);
     }
-    cell.textContent = `${Math.max(actual - scheduled, 0)} min`;
+    const baseLate = Number(cell.dataset.lateBase || 0);
+    const total = (status === 'ATRASO' ? entryLate : baseLate) + lunchExcess;
+    cell.textContent = total > 0 ? `${total} min` : '-';
   }
 
   function clearQuickCertificate(row) {
@@ -174,16 +187,11 @@ if (quickForm) {
       updateQuickSummary();
     });
   });
-  quickForm.querySelectorAll('.quick-lunch-out').forEach((input) => {
-    input.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      const row = input.closest('tr');
-      const lunchIn = row.querySelector('.quick-lunch-in');
-      if (lunchIn) lunchIn.focus();
-    });
-  });
   quickForm.querySelectorAll('.quick-lunch-in').forEach((input) => {
+    input.addEventListener('input', () => {
+      updateQuickLate(input.closest('tr'));
+      updateQuickSummary();
+    });
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -191,6 +199,9 @@ if (quickForm) {
       const next = rows[rows.indexOf(input.closest('tr')) + 1];
       if (next) next.querySelector('.quick-status')?.focus();
     });
+  });
+  quickLunchLimit?.addEventListener('input', () => {
+    quickRows().forEach((row) => updateQuickLate(row));
   });
   quickScheduled?.addEventListener('input', () => {
     quickRows().forEach((row) => {
@@ -224,7 +235,6 @@ if (quickForm) {
     quickRows().forEach((row) => {
       row.querySelector('.quick-status').value = '';
       row.querySelector('.quick-obs').value = '';
-      row.querySelector('.quick-lunch-out').value = '';
       row.querySelector('.quick-lunch-in').value = '';
       clearQuickCertificate(row);
       updateQuickRow(row);
