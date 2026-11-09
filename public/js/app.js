@@ -117,6 +117,7 @@ if (quickForm) {
 
     let lateMinutes = 0;
     if (entry && expEntry) lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(expEntry), 0);
+    if (lunchOut && expLunchOut) lateMinutes += Math.max(timeToMinutes(lunchOut) - timeToMinutes(expLunchOut), 0);
     if (lunchIn && expLunchIn) lateMinutes += Math.max(timeToMinutes(lunchIn) - timeToMinutes(expLunchIn), 0);
     // Salida: solo penaliza si se va ANTES de la hora esperada (18:00).
     if (exit && expExit) lateMinutes += Math.max(timeToMinutes(expExit) - timeToMinutes(exit), 0);
