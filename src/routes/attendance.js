@@ -25,6 +25,8 @@ const attendanceColumns = [
   { header: 'Sucursal', key: 'branch', width: 16 },
   { header: 'Estado', key: 'status', width: 20 },
   { header: 'Entrada', key: 'entry_time', width: 10 },
+  { header: 'Salida almuerzo', key: 'lunch_out', width: 12 },
+  { header: 'Regreso almuerzo', key: 'lunch_in', width: 12 },
   { header: 'Hora establecida', key: 'scheduled_entry_time', width: 12 },
   { header: 'Hora real', key: 'actual_arrival_time', width: 10 },
   { header: 'Min. atraso', key: 'late_minutes', width: 10 },
@@ -107,6 +109,8 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     const entries = [].concat(req.body.entry_time || []).map((value) => clean(value));
     const rowSchedules = [].concat(req.body.row_scheduled || []).map((value) => clean(value));
     const observations = [].concat(req.body.observation || []).map((value) => clean(value));
+    const lunchOuts = [].concat(req.body.lunch_out || []).map((value) => clean(value));
+    const lunchIns = [].concat(req.body.lunch_in || []).map((value) => clean(value));
     const errors = [];
     if (!requireText(recordDate) || !isValidDate(recordDate)) errors.push('Seleccione una fecha valida.');
     if (!branch) errors.push('Seleccione una sucursal.');
@@ -167,6 +171,8 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         permit_time_return: '',
         permit_reason: status === 'PERMISO' ? observation : '',
         permit_full_day: status === 'PERMISO' ? 1 : 0,
+        lunch_out: lunchOuts[index] || '',
+        lunch_in: lunchIns[index] || '',
         _certificate: certificate
       });
     }
@@ -281,7 +287,9 @@ function normalizeAttendance(body) {
     permit_time_out: status === 'PERMISO' ? clean(body.permit_time_out) : '',
     permit_time_return: status === 'PERMISO' ? clean(body.permit_time_return) : '',
     permit_reason: status === 'PERMISO' ? clean(body.permit_reason) : '',
-    permit_full_day: status === 'PERMISO' && body.permit_full_day ? 1 : 0
+    permit_full_day: status === 'PERMISO' && body.permit_full_day ? 1 : 0,
+    lunch_out: clean(body.lunch_out),
+    lunch_in: clean(body.lunch_in)
   };
 }
 

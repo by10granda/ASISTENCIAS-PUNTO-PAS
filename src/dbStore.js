@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 const attendanceColumns = [
   'worker_id', 'record_date', 'status', 'entry_time', 'scheduled_entry_time', 'actual_arrival_time',
   'late_minutes', 'observation', 'registered_by', 'justified_reason', 'has_support_doc', 'permit_time_out',
-  'permit_time_return', 'permit_reason', 'permit_full_day'
+  'permit_time_return', 'permit_reason', 'permit_full_day', 'lunch_out', 'lunch_in'
 ];
 const attendanceUpdates = attendanceColumns.filter((column) => column !== 'worker_id' && column !== 'record_date');
 const attendanceUpsertSql = `
@@ -175,6 +175,14 @@ function getDb() {
 
 export async function initStore() {
   getDb().exec(schema);
+  /* Migración: agregar columnas de almuerzo a registros existentes */
+  const db = getDb();
+  const columns = db.prepare("PRAGMA table_info(attendance_records)").all().map((row) => row.name);
+  for (const column of ['lunch_out', 'lunch_in']) {
+    if (!columns.includes(column)) {
+      db.prepare(`ALTER TABLE attendance_records ADD COLUMN ${column} TEXT DEFAULT ''`).run();
+    }
+  }
 }
 
 export async function listWorkers() {
