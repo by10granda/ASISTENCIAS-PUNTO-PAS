@@ -66,6 +66,8 @@ Vercel (pagina) --HTTPS--> api.sudominio.com --Tunnel--> API :3001 --> SQLite
 
 Guia paso a paso: `ARQUITECTURA_VERCEL.md`.
 
+Sitio publicado: **https://asistencias-puntopas.vercel.app** (usuario `admin`).
+
 ## Hojas de Google Sheets (opcional / legado)
 
 El sistema crea automaticamente estas hojas dentro del archivo configurado:

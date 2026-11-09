@@ -7,6 +7,31 @@ Esta es la configuracion que permite:
 - Los datos viajan por **Cloudflare Tunnel** en HTTPS/JSON.
 - No se expone la base de datos directamente a Internet.
 
+## Estado actual (desplegado)
+
+| Elemento | Valor |
+|---|---|
+| Pagina publica | `https://asistencias-puntopas.vercel.app` |
+| Usuario / clave | `admin` / `admin` |
+| Proyecto Vercel | `grandas-projects/asistencias-punto-pas` |
+| API del servidor | `https://continually-staying-commissioners-terrorism.trycloudflare.com` |
+| Base de datos | `C:\asistencias\data\asistencias.db` |
+
+> La URL de la API es un **tunel rapido** de Cloudflare: cambia si se cierra o
+> reinicia la ventana de `cloudflared`. Cuando cambie, actualice `STORE_API_URL`
+> en Vercel (Settings -> Environment Variables) y vuelva a desplegar.
+
+### Como volver a desplegar
+
+Desde este equipo (la carpeta del proyecto):
+
+```bash
+npx vercel@latest deploy --prod --yes
+```
+
+Vercel no esta conectado por GitHub a esta cuenta, asi que los cambios no se
+publican solos: hay que ejecutar el comando despues de cada `git push`.
+
 ## Como funciona
 
 ```text
