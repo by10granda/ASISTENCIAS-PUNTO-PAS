@@ -98,8 +98,17 @@
       <input type="hidden" name="branch" value="<%= branch %>">
 
       <div class="quick-toolbar">
-        <label>Hora de entrada general
-          <input type="time" id="quickEntryTime" value="08:00">
+        <label>Hora entrada esperada
+          <input type="time" id="quickExpectedEntry" name="expected_entry_time" value="07:00">
+        </label>
+        <label>Salida almuerzo esperada
+          <input type="time" id="quickExpectedLunchOut" name="expected_lunch_out" value="13:00">
+        </label>
+        <label>Regreso almuerzo esperado
+          <input type="time" id="quickExpectedLunchIn" name="expected_lunch_in" value="14:00">
+        </label>
+        <label>Hora salida esperada
+          <input type="time" id="quickExpectedExit" name="expected_exit_time" value="18:00">
         </label>
         <label>Hora establecida (atrasos)
           <input type="time" name="scheduled_entry_time" id="quickScheduled" value="08:00">
@@ -143,6 +152,10 @@
                   <input type="hidden" name="row_lunch_out" class="quick-row-lunch-out" value="<%= r && r.lunch_out ? r.lunch_out : '' %>">
                   <input type="hidden" name="row_lunch_in" class="quick-row-lunch-in" value="<%= r && r.lunch_in ? r.lunch_in : '' %>">
                   <input type="hidden" name="row_exit_time" class="quick-row-exit-time" value="<%= r && r.exit_time ? r.exit_time : '' %>">
+                  <input type="hidden" name="expected_entry_row" class="quick-row-expected-entry" value="<%= r && r.expected_entry_time ? r.expected_entry_time : '07:00' %>">
+                  <input type="hidden" name="expected_lunch_out_row" class="quick-row-expected-lunch-out" value="<%= r && r.expected_lunch_out ? r.expected_lunch_out : '13:00' %>">
+                  <input type="hidden" name="expected_lunch_in_row" class="quick-row-expected-lunch-in" value="<%= r && r.expected_lunch_in ? r.expected_lunch_in : '14:00' %>">
+                  <input type="hidden" name="expected_exit_row" class="quick-row-expected-exit" value="<%= r && r.expected_exit_time ? r.expected_exit_time : '18:00' %>">
                   <select name="status" class="quick-status">
                     <option value="">Sin registrar</option>
                     <% statuses.forEach((s) => { %>

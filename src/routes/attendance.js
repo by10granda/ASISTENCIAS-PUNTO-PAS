@@ -105,6 +105,10 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     const branch = clean(req.body.branch);
     const registeredBy = clean(req.body.registered_by) || 'Administrador';
     const scheduled = clean(req.body.scheduled_entry_time);
+    const expectedEntry = clean(req.body.expected_entry_time) || '07:00';
+    const expectedLunchOut = clean(req.body.expected_lunch_out) || '13:00';
+    const expectedLunchIn = clean(req.body.expected_lunch_in) || '14:00';
+    const expectedExit = clean(req.body.expected_exit_time) || '18:00';
     const ids = [].concat(req.body.worker_id || []).map((value) => clean(value));
     const statuses = [].concat(req.body.status || []).map((value) => clean(value));
     const entries = [].concat(req.body.entry_time || []).map((value) => clean(value));
@@ -112,6 +116,10 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     const lunchOuts = [].concat(req.body.lunch_out || []).map((value) => clean(value));
     const lunchIns = [].concat(req.body.lunch_in || []).map((value) => clean(value));
     const exits = [].concat(req.body.exit_time || []).map((value) => clean(value));
+    const expectedEntries = [].concat(req.body.expected_entry_row || []).map((value) => clean(value));
+    const expectedLunchOuts = [].concat(req.body.expected_lunch_out_row || []).map((value) => clean(value));
+    const expectedLunchIns = [].concat(req.body.expected_lunch_in_row || []).map((value) => clean(value));
+    const expectedExits = [].concat(req.body.expected_exit_row || []).map((value) => clean(value));
     const observations = [].concat(req.body.observation || []).map((value) => clean(value));
     const errors = [];
     if (!requireText(recordDate) || !isValidDate(recordDate)) errors.push('Seleccione una fecha valida.');
@@ -141,6 +149,10 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
       const rowScheduled = rowSchedules[index] || '';
       const scheduledForRow = rowScheduled || scheduled;
       const observation = observations[index] || '';
+      const expEntry = expectedEntries[index] || expectedEntry;
+      const expLunchOut = expectedLunchOuts[index] || expectedLunchOut;
+      const expLunchIn = expectedLunchIns[index] || expectedLunchIn;
+      const expExit = expectedExits[index] || expectedExit;
       let lateMinutes = 0;
       if (status === 'ASISTENCIA NORMAL' && !entry) errors.push(`${rowLabel}: ingrese la hora de entrada.`);
       if (status === 'ATRASO') {
@@ -148,6 +160,10 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
         if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
       }
+      // Atraso por segmento: entrada, regreso de almuerzo y salida (contra sus horarios esperados).
+      if (entry && expEntry) lateMinutes += minutesBetween(expEntry, entry);
+      if (lunchIns[index] && expLunchIn) lateMinutes += minutesBetween(expLunchIn, lunchIns[index]);
+      if (exits[index] && expExit) lateMinutes += minutesBetween(expExit, exits[index]);
       if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
       if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 

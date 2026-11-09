@@ -90,6 +90,10 @@ if (quickForm) {
   const quickEntryTime = quickForm.querySelector('#quickEntryTime');
   const quickScheduled = quickForm.querySelector('#quickScheduled');
   const quickSummary = quickForm.querySelector('#quickSummary');
+  const quickExpectedEntry = quickForm.querySelector('#quickExpectedEntry');
+  const quickExpectedLunchOut = quickForm.querySelector('#quickExpectedLunchOut');
+  const quickExpectedLunchIn = quickForm.querySelector('#quickExpectedLunchIn');
+  const quickExpectedExit = quickForm.querySelector('#quickExpectedExit');
   const quickRows = () => [...quickForm.querySelectorAll('tbody tr[data-worker]')];
 
   function timeToMinutes(value) {
@@ -101,18 +105,22 @@ if (quickForm) {
     const status = row.querySelector('.quick-status')?.value || '';
     const cell = row.querySelector('.quick-late');
     if (!cell) return;
-    const time = row.querySelector('.quick-time')?.value || '';
-    const scheduledValue = row.dataset.scheduled || quickScheduled?.value || '';
-    const scheduled = timeToMinutes(scheduledValue);
-    const actual = timeToMinutes(time);
+    const entry = row.querySelector('.quick-time')?.value || '';
+    const lunchOut = row.querySelector('.quick-lunch-out')?.value || '';
+    const lunchIn = row.querySelector('.quick-lunch-in')?.value || '';
+    const exit = row.querySelector('.quick-exit-time')?.value || '';
 
-    let entryLate = 0;
-    if (status === 'ATRASO' && scheduled !== null && actual !== null) {
-      entryLate = Math.max(actual - scheduled, 0);
-    }
-    const baseLate = Number(cell.dataset.lateBase || 0);
-    const total = (status === 'ATRASO' ? entryLate : baseLate);
-    cell.textContent = total > 0 ? `${total} min` : '-';
+    const expEntry = row.querySelector('.quick-row-expected-entry')?.value || quickExpectedEntry?.value || '07:00';
+    const expLunchOut = row.querySelector('.quick-row-expected-lunch-out')?.value || quickExpectedLunchOut?.value || '13:00';
+    const expLunchIn = row.querySelector('.quick-row-expected-lunch-in')?.value || quickExpectedLunchIn?.value || '14:00';
+    const expExit = row.querySelector('.quick-row-expected-exit')?.value || quickExpectedExit?.value || '18:00';
+
+    let lateMinutes = 0;
+    if (entry && expEntry) lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(expEntry), 0);
+    if (lunchIn && expLunchIn) lateMinutes += Math.max(timeToMinutes(lunchIn) - timeToMinutes(expLunchIn), 0);
+    if (exit && expExit) lateMinutes += Math.max(timeToMinutes(exit) - timeToMinutes(expExit), 0);
+
+    cell.textContent = lateMinutes > 0 ? `${lateMinutes} min` : '-';
   }
 
   function clearQuickCertificate(row) {
@@ -136,24 +144,6 @@ if (quickForm) {
   function updateQuickRow(row) {
     const status = row.querySelector('.quick-status')?.value || '';
     row.dataset.status = status;
-    const time = row.querySelector('.quick-time');
-    const needsTime = status === 'ASISTENCIA NORMAL' || status === 'ATRASO';
-    if (time) {
-      time.readOnly = !needsTime;
-      if (!needsTime) {
-        time.value = '';
-      } else if (status === 'ATRASO' && time.value === (quickEntryTime?.value || '')) {
-        time.value = '';
-        time.focus();
-      } else if (status === 'ASISTENCIA NORMAL' && !time.value) {
-        time.value = quickEntryTime?.value || '';
-      }
-    }
-    if (status !== 'ATRASO') {
-      row.dataset.scheduled = '';
-      const scheduledField = row.querySelector('.quick-row-scheduled');
-      if (scheduledField) scheduledField.value = '';
-    }
     if (status !== 'FALTA JUSTIFICADA') clearQuickCertificate(row);
     updateQuickLate(row);
     updateQuickSummary();
@@ -162,8 +152,6 @@ if (quickForm) {
   quickRows().forEach((row) => {
     const status = row.querySelector('.quick-status')?.value || '';
     row.dataset.status = status;
-    const time = row.querySelector('.quick-time');
-    if (time) time.readOnly = status !== 'ASISTENCIA NORMAL' && status !== 'ATRASO';
     if (row.dataset.saved !== '1') updateQuickLate(row);
   });
   updateQuickSummary();
@@ -178,6 +166,10 @@ if (quickForm) {
     });
   });
   quickForm.querySelectorAll('.quick-lunch-out').forEach((input) => {
+    input.addEventListener('input', () => {
+      updateQuickLate(input.closest('tr'));
+      updateQuickSummary();
+    });
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -187,6 +179,10 @@ if (quickForm) {
     });
   });
   quickForm.querySelectorAll('.quick-lunch-in').forEach((input) => {
+    input.addEventListener('input', () => {
+      updateQuickLate(input.closest('tr'));
+      updateQuickSummary();
+    });
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -196,12 +192,22 @@ if (quickForm) {
     });
   });
   quickForm.querySelectorAll('.quick-exit-time').forEach((input) => {
+    input.addEventListener('input', () => {
+      updateQuickLate(input.closest('tr'));
+      updateQuickSummary();
+    });
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
       const rows = quickRows();
       const next = rows[rows.indexOf(input.closest('tr')) + 1];
       if (next) next.querySelector('.quick-status')?.focus();
+    });
+  });
+  [quickExpectedEntry, quickExpectedLunchOut, quickExpectedLunchIn, quickExpectedExit].forEach((input) => {
+    if (!input) return;
+    input.addEventListener('input', () => {
+      quickRows().forEach((row) => updateQuickLate(row));
     });
   });
   quickScheduled?.addEventListener('input', () => {
@@ -214,7 +220,7 @@ if (quickForm) {
     quickRows().forEach((row) => {
       const status = row.querySelector('.quick-status')?.value;
       if (status === 'ASISTENCIA NORMAL') {
-        row.querySelector('.quick-time').value = quickEntryTime?.value || '';
+        row.querySelector('.quick-time').value = quickExpectedEntry?.value || '';
         updateQuickLate(row);
       }
     });
@@ -226,7 +232,7 @@ if (quickForm) {
       if (select.value) return;
       select.value = 'ASISTENCIA NORMAL';
       const time = row.querySelector('.quick-time');
-      if (time) time.value = quickEntryTime?.value || '';
+      if (time) time.value = quickExpectedEntry?.value || '';
       updateQuickRow(row);
     });
   });
@@ -235,6 +241,7 @@ if (quickForm) {
     if (!confirm('Se limpiaran todas las filas de esta tabla. ¿Continuar?')) return;
     quickRows().forEach((row) => {
       row.querySelector('.quick-status').value = '';
+      row.querySelector('.quick-time').value = '';
       row.querySelector('.quick-obs').value = '';
       row.querySelector('.quick-lunch-out').value = '';
       row.querySelector('.quick-lunch-in').value = '';
