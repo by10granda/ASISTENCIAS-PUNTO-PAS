@@ -1,14 +1,41 @@
 <%- include('partials/header') %>
 
 <section class="cards">
-  <article class="card"><span>Activos</span><strong><%= counts.active_workers || 0 %></strong></article>
+  <article class="card"><span>Trabajadores activos</span><strong><%= counts.active_workers || 0 %></strong></article>
   <article class="card success"><span>Presentes hoy</span><strong><%= counts.present_today || 0 %></strong></article>
+  <article class="card warning"><span>Sin registro hoy</span><strong><%= counts.pending_today || 0 %></strong></article>
   <article class="card"><span>Faltas justificadas</span><strong><%= counts.justified_today || 0 %></strong></article>
-  <article class="card danger"><span>Faltas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
-  <article class="card warning"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong></article>
+  <article class="card danger"><span>Faltas injustificadas</span><strong><%= counts.unjustified_today || 0 %></strong></article>
+  <article class="card warning"><span>Atrasos hoy</span><strong><%= counts.late_today || 0 %></strong><small><%= counts.late_minutes_today || 0 %> min</small></article>
   <article class="card"><span>De vacaciones</span><strong><%= (counts.vacation_today || 0) + (vacationRanges.total || 0) %></strong></article>
   <article class="card"><span>Con permiso</span><strong><%= counts.permit_today || 0 %></strong></article>
 </section>
+
+<section class="cards compact">
+  <article class="card"><span>Dias laborados (mes)</span><strong><%= summary.worked_days_month || 0 %></strong></article>
+  <article class="card"><span>Min. atraso (mes)</span><strong><%= summary.late_minutes_month || 0 %></strong></article>
+  <article class="card"><span>Faltas justificadas (mes)</span><strong><%= summary.justified_month || 0 %></strong></article>
+  <article class="card danger"><span>Faltas injustificadas (mes)</span><strong><%= summary.unjustified_month || 0 %></strong></article>
+  <article class="card"><span>Vacaciones (mes)</span><strong><%= summary.vacation_month || 0 %></strong></article>
+  <article class="card"><span>Permisos (mes)</span><strong><%= summary.permit_month || 0 %></strong></article>
+</section>
+
+<% if (lowVacation && lowVacation.length) { %>
+<section class="panel danger-zone">
+  <div class="section-title">
+    <h2>Atencion: saldo de vacaciones bajo o negativo</h2>
+    <p>Estos trabajadores ya consumieron sus dias disponibles al <%= balanceDate %>.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trabajador</span></th><th>Sucursal</th><th>Generados</th><th>Usados</th><th>Disponibles</th></tr></thead>
+      <tbody>
+        <% lowVacation.forEach((w) => { %><tr><td><%= w.full_name %></td><td><%= w.branch || '-' %></td><td><%= w.earned_days || 0 %></td><td><%= w.used_days || 0 %></td><td><strong class="text-danger"><%= w.available_days || 0 %></strong></td></tr><% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
 
 <section class="panel">
   <div class="section-title">

@@ -8,8 +8,9 @@ import { incidentsRouter } from './routes/incidents.js';
 import { reportsRouter } from './routes/reports.js';
 import { vacationsRouter } from './routes/vacations.js';
 import { workersRouter } from './routes/workers.js';
-import { initStore, listAttendance, listVacations, listWorkers } from './store.js';
+import { initStore, listAttendance, listVacations, listWorkers, listVacationDeductions } from './store.js';
 import { currentMonth, monthRange, today } from './utils.js';
+import { vacationBalance } from './vacationPolicy.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -54,7 +55,7 @@ app.get('/', async (req, res, next) => {
     const date = today();
     const month = currentMonth();
     const { start, end } = monthRange(month);
-    const [workers, attendance, vacations] = await Promise.all([listWorkers(), listAttendance(), listVacations()]);
+    const [workers, attendance, vacations, deductions] = await Promise.all([listWorkers(), listAttendance(), listVacations(), listVacationDeductions()]);
     const todayRecords = attendance.filter((record) => record.record_date === date);
     const monthRecords = attendance.filter((record) => record.record_date >= start && record.record_date <= end);
     const counts = {
@@ -63,8 +64,10 @@ app.get('/', async (req, res, next) => {
       justified_today: count(todayRecords, 'FALTA JUSTIFICADA'),
       unjustified_today: count(todayRecords, 'FALTA INJUSTIFICADA'),
       late_today: count(todayRecords, 'ATRASO'),
+      late_minutes_today: todayRecords.filter((r) => r.status === 'ATRASO').reduce((s, r) => s + (Number(r.late_minutes) || 0), 0),
       vacation_today: count(todayRecords, 'VACACIONES'),
-      permit_today: count(todayRecords, 'PERMISO')
+      permit_today: count(todayRecords, 'PERMISO'),
+      pending_today: workers.filter((w) => w.status === 'Activo' && !todayRecords.some((r) => r.worker_id === w.id)).length
     };
     const grouped = new Map();
     monthRecords.forEach((record) => {
@@ -77,7 +80,21 @@ app.get('/', async (req, res, next) => {
     const vacationRanges = {
       total: vacations.filter((vacation) => date >= vacation.start_date && date <= vacation.end_date && ['Programadas', 'En curso'].includes(vacation.status)).length
     };
-    res.render('dashboard', { title: 'Panel principal', counts, monthly, month, vacationRanges });
+    const summary = {
+      worked_days_month: monthRecords.filter((r) => r.status === 'ASISTENCIA NORMAL' || r.status === 'ATRASO').length,
+      late_minutes_month: monthRecords.filter((r) => r.status === 'ATRASO').reduce((s, r) => s + (Number(r.late_minutes) || 0), 0),
+      justified_month: count(monthRecords, 'FALTA JUSTIFICADA'),
+      unjustified_month: count(monthRecords, 'FALTA INJUSTIFICADA'),
+      vacation_month: count(monthRecords, 'VACACIONES'),
+      permit_month: count(monthRecords, 'PERMISO')
+    };
+    const balanceDate = today();
+    const lowVacation = workers
+      .filter((w) => w.status === 'Activo')
+      .map((w) => ({ ...w, ...vacationBalance(w, vacations, deductions, balanceDate) }))
+      .filter((b) => b.available_days <= 0)
+      .sort((a, b) => a.available_days - b.available_days);
+    res.render('dashboard', { title: 'Panel principal', counts, monthly, month, vacationRanges, summary, lowVacation, balanceDate });
   } catch (error) {
     next(error);
   }
