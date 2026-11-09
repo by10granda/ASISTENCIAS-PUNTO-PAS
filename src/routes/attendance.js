@@ -160,10 +160,11 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
         if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
       }
-      // Atraso por segmento: entrada, regreso de almuerzo y salida (contra sus horarios esperados).
+      // Atraso por segmento: entrada y regreso de almuerzo solo si se pasan del horario esperado;
+      // salida solo penaliza si el trabajador se va ANTES de la hora esperada (18:00).
       if (entry && expEntry) lateMinutes += minutesBetween(expEntry, entry);
       if (lunchIns[index] && expLunchIn) lateMinutes += minutesBetween(expLunchIn, lunchIns[index]);
-      if (exits[index] && expExit) lateMinutes += minutesBetween(expExit, exits[index]);
+      if (exits[index] && expExit) lateMinutes += minutesBetween(exits[index], expExit);
       if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
       if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 
