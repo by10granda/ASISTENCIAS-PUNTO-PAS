@@ -111,6 +111,19 @@ CREATE TABLE IF NOT EXISTS medical_withdrawals (
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records (record_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_worker ON attendance_records (worker_id);
 CREATE INDEX IF NOT EXISTS idx_vacations_worker ON vacations (worker_id);
+
+CREATE TABLE IF NOT EXISTS certificates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  worker_id INTEGER NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
+  record_date TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER DEFAULT 0,
+  uploaded_by TEXT DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (worker_id, record_date)
+);
 `;
 
 const attendanceColumns = [
@@ -261,6 +274,72 @@ export async function listAttendance() {
 export async function upsertAttendance(record) {
   const now = timestamp();
   getDb().prepare(attendanceUpsertSql).run(...attendanceValues(record), now, now);
+}
+
+function certificateDir() {
+  const configured = process.env.CERTIFICATES_DIR;
+  return configured ? path.resolve(configured) : path.join(path.dirname(databaseFile), 'certificados');
+}
+
+const certificateExtensions = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'application/pdf': '.pdf'
+};
+
+export async function saveCertificate(record) {
+  const workerId = toInteger(record.worker_id);
+  const recordDate = textValue(record.record_date);
+  const dataBase64 = String(record.data_base64 || '');
+  if (!workerId) throw new Error('CERTIFICADO_INVALIDO');
+  if (!recordDate) throw new Error('CERTIFICADO_INVALIDO');
+  if (!dataBase64) throw new Error('CERTIFICADO_VACIO');
+
+  const mime = certificateExtensions[String(record.mime_type)] ? String(record.mime_type) : '';
+  if (!mime) throw new Error('CERTIFICADO_INVALIDO');
+  const buffer = Buffer.from(dataBase64, 'base64');
+  if (!buffer.length) throw new Error('CERTIFICADO_VACIO');
+
+  const directory = certificateDir();
+  fs.mkdirSync(directory, { recursive: true });
+  const filePath = path.join(directory, `certificado-trabajador-${workerId}-${recordDate}${certificateExtensions[mime]}`);
+  fs.writeFileSync(filePath, buffer);
+
+  const now = timestamp();
+  const existing = getDb().prepare('SELECT id FROM certificates WHERE worker_id = ? AND record_date = ?').get(workerId, recordDate);
+  if (existing) {
+    getDb().prepare(`
+      UPDATE certificates
+      SET file_name = ?, mime_type = ?, size_bytes = ?, uploaded_by = ?, updated_at = ?
+      WHERE id = ?
+    `).run(textValue(record.file_name) || path.basename(filePath), mime, buffer.length, textValue(record.uploaded_by), now, existing.id);
+  } else {
+    getDb().prepare(`
+      INSERT INTO certificates (worker_id, record_date, file_name, mime_type, size_bytes, uploaded_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(workerId, recordDate, textValue(record.file_name) || path.basename(filePath), mime, buffer.length, textValue(record.uploaded_by), now, now);
+  }
+  return { file_name: record.file_name || path.basename(filePath), mime_type: mime, size_bytes: buffer.length };
+}
+
+export async function findCertificate(workerId, recordDate) {
+  const row = getDb().prepare('SELECT * FROM certificates WHERE worker_id = ? AND record_date = ?').get(toInteger(workerId), textValue(recordDate));
+  return row ? mapId(row) : undefined;
+}
+
+export async function listCertificates() {
+  return getDb().prepare('SELECT * FROM certificates ORDER BY record_date, id').all().map(mapId);
+}
+
+export async function readCertificate(workerId, recordDate) {
+  const row = getDb().prepare('SELECT * FROM certificates WHERE worker_id = ? AND record_date = ?').get(toInteger(workerId), textValue(recordDate));
+  if (!row) throw new Error('CERTIFICADO_NO_ENCONTRADO');
+  const recordedName = String(row.file_name || '');
+  const suffix = certificateExtensions[row.mime_type] ? certificateExtensions[row.mime_type] : path.extname(recordedName);
+  const filePath = path.join(certificateDir(), `certificado-trabajador-${toInteger(workerId)}-${textValue(recordDate)}${suffix}`);
+  if (!fs.existsSync(filePath)) throw new Error('CERTIFICADO_NO_ENCONTRADO');
+  return { mime_type: row.mime_type, file_name: recordedName, data_base64: fs.readFileSync(filePath).toString('base64') };
 }
 
 export async function listVacations() {

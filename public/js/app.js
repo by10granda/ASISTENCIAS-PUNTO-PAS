@@ -25,6 +25,34 @@ document.querySelectorAll('.confirm-important').forEach((form) => {
   });
 });
 
+// Convierte el certificado adjunto a base64 para enviarlo dentro del formulario.
+const certificateInput = document.querySelector('#certificateInput');
+certificateInput?.addEventListener('change', async () => {
+  const dataField = document.querySelector('#certificateData');
+  const nameField = document.querySelector('#certificateFileName');
+  const mimeField = document.querySelector('#certificateMimeType');
+  if (!dataField) return;
+  dataField.value = '';
+  nameField.value = '';
+  mimeField.value = '';
+  const file = certificateInput.files?.[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('El archivo supera los 10 MB permitidos.');
+    certificateInput.value = '';
+    return;
+  }
+  const buffer = await file.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  dataField.value = btoa(binary);
+  nameField.value = file.name;
+  mimeField.value = file.type || '';
+});
+
 document.querySelectorAll('.delete-worker-form').forEach((form) => {
   form.addEventListener('submit', (event) => {
     const input = form.querySelector('[name="confirm_delete"]');
@@ -39,5 +67,8 @@ document.querySelectorAll('.delete-worker-form').forEach((form) => {
 
 const attendanceRecordDate = document.querySelector('#attendanceRecordDate');
 attendanceRecordDate?.addEventListener('change', () => {
-  if (attendanceRecordDate.value) window.location.href = `/asistencia?date=${attendanceRecordDate.value}`;
+  if (!attendanceRecordDate.value) return;
+  const params = new URLSearchParams(window.location.search);
+  params.set('date', attendanceRecordDate.value);
+  window.location.href = `/asistencia?${params.toString()}`;
 });

@@ -71,10 +71,10 @@
   <h2>Historial de justificaciones por falta (con motivo y documento)</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Sucursal</th><th>Motivo de la justificacion</th><th>Documento de respaldo</th><th>Usuario</th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Trabajador</th><th>Sucursal</th><th>Motivo de la justificacion</th><th>Certificado</th><th>Usuario</th></tr></thead>
       <tbody>
         <% if (!attendances.length) { %><tr><td colspan="6" class="empty">No hay faltas justificadas registradas.</td></tr><% } %>
-        <% attendances.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.branch || '-' %></td><td><%= record.justified_reason || '-' %></td><td><span class="pill <%= record.has_support_doc ? 'success' : '' %>"><%= Number(record.has_support_doc) ? 'Con documento' : 'Sin documento' %></span></td><td><%= record.registered_by || '-' %></td></tr><% }) %>
+        <% attendances.forEach((record) => { %><tr><td><%= record.record_date %></td><td><%= record.full_name %></td><td><%= record.branch || '-' %></td><td><%= record.justified_reason || '-' %></td><td><% if (Number(record.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= record.worker_id %>&record_date=<%= record.record_date %>" target="_blank">Ver certificado</a><% } else { %><span class="pill">Sin documento</span><% } %></td><td><%= record.registered_by || '-' %></td></tr><% }) %>
       </tbody>
     </table>
   </div>

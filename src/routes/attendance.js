@@ -1,8 +1,20 @@
 import { Router } from 'express';
-import { findWorker, listAttendance, listBranches, listWorkers, upsertAttendance } from '../store.js';
+import {
+  findCertificate,
+  findWorker,
+  listAttendance,
+  listBranches,
+  listWorkers,
+  readCertificate,
+  saveCertificate,
+  upsertAttendance
+} from '../store.js';
 import { attendanceStatuses, clean, minutesBetween, requireText, today } from '../utils.js';
 
 export const attendanceRouter = Router();
+
+const allowedCertificateMimes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const maxCertificateBytes = 10 * 1024 * 1024;
 
 attendanceRouter.get('/', async (req, res, next) => {
   try {
@@ -18,13 +30,47 @@ attendanceRouter.get('/', async (req, res, next) => {
 attendanceRouter.post('/', async (req, res, next) => {
   try {
     const record = normalizeAttendance(req.body);
+    const certificate = normalizeCertificateUpload(req.body);
     const errors = await validateAttendance(record);
+    if (certificate && record.status !== 'FALTA JUSTIFICADA') errors.push('El certificado solo puede adjuntarse a una falta justificada.');
+    if (certificate && allowedCertificateMimes.has(certificate.mime_type) === false) errors.push('El certificado debe ser una imagen (JPG, PNG, WEBP) o un PDF.');
+    if (certificate && certificate.size_bytes > maxCertificateBytes) errors.push('El certificado no puede pesar mas de 10 MB.');
     if (errors.length) return await renderAttendanceWithErrors(res, record.record_date, errors);
 
+    if (certificate) record.has_support_doc = 1;
     await upsertAttendance(record);
+
+    if (certificate) {
+      await saveCertificate({
+        worker_id: record.worker_id,
+        record_date: record.record_date,
+        file_name: certificate.file_name,
+        mime_type: certificate.mime_type,
+        data_base64: certificate.data_base64,
+        uploaded_by: record.registered_by
+      });
+    }
+
     const branchQuery = clean(req.body.branch) ? `&branch=${encodeURIComponent(clean(req.body.branch))}` : '';
     res.redirect(`/asistencia?date=${record.record_date}${branchQuery}`);
   } catch (error) {
+    next(error);
+  }
+});
+
+attendanceRouter.get('/certificado', async (req, res, next) => {
+  try {
+    const workerId = clean(req.query.worker_id);
+    const recordDate = clean(req.query.record_date);
+    const meta = await findCertificate(workerId, recordDate);
+    const content = await readCertificate(workerId, recordDate);
+    res.setHeader('content-type', content.mime_type || 'application/octet-stream');
+    res.setHeader('content-disposition', `inline; filename="certificado-${meta?.record_date || recordDate}"`);
+    res.send(Buffer.from(content.data_base64, 'base64'));
+  } catch (error) {
+    if (error.message === 'CERTIFICADO_NO_ENCONTRADO') {
+      return res.status(404).send('No se encontro el certificado almacenado para esta justificacion.');
+    }
     next(error);
   }
 });
@@ -71,6 +117,17 @@ function normalizeAttendance(body) {
     permit_time_return: status === 'PERMISO' ? clean(body.permit_time_return) : '',
     permit_reason: status === 'PERMISO' ? clean(body.permit_reason) : '',
     permit_full_day: status === 'PERMISO' && body.permit_full_day ? 1 : 0
+  };
+}
+
+function normalizeCertificateUpload(body) {
+  const dataBase64 = String(body.certificate_data || '').replace(/^data:[^;]*;base64,/, '');
+  if (!dataBase64) return null;
+  return {
+    file_name: clean(body.certificate_file_name) || `certificado-${clean(body.certificate_mime_type) === 'application/pdf' ? 'documento' : 'imagen'}`,
+    mime_type: clean(body.certificate_mime_type),
+    data_base64: dataBase64,
+    size_bytes: Math.floor(dataBase64.length * 3 / 4)
   };
 }
 

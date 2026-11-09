@@ -20,6 +20,7 @@
     <label>Usuario que registra<input required name="registered_by" value="Administrador"></label>
     <label class="status-field normal">Hora de entrada<input type="time" name="entry_time"></label>
     <label class="status-field justified">Motivo<input name="justified_reason"></label>
+    <label class="status-field justified">Certificado (imagen o PDF)<input type="file" id="certificateInput" accept="image/png,image/jpeg,image/webp,application/pdf"></label>
     <label class="status-field justified checkbox"><input type="checkbox" name="has_support_doc"> Tiene documento de respaldo</label>
     <label class="status-field late">Hora establecida<input type="time" name="scheduled_entry_time" value="08:00"></label>
     <label class="status-field late">Hora real de llegada<input type="time" name="actual_arrival_time"></label>
@@ -28,6 +29,9 @@
     <label class="status-field permit">Hora de regreso<input type="time" name="permit_time_return"></label>
     <label class="status-field permit">Motivo del permiso<input name="permit_reason"></label>
     <label class="span-2">Observacion<textarea name="observation" rows="3"></textarea></label>
+    <input type="hidden" name="certificate_data" id="certificateData">
+    <input type="hidden" name="certificate_file_name" id="certificateFileName">
+    <input type="hidden" name="certificate_mime_type" id="certificateMimeType">
     <div class="actions"><button>Guardar asistencia</button></div>
   </form>
 </section>
@@ -36,10 +40,10 @@
   <h2>Registros del dia</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Atraso</th><th>Observacion</th><th>Actualizado</th></tr></thead>
+      <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Atraso</th><th>Observacion</th><th>Certificado</th><th>Actualizado</th></tr></thead>
       <tbody>
-        <% if (!records.length) { %><tr><td colspan="6" class="empty">No hay registros para esta fecha.</td></tr><% } %>
-        <% records.forEach((r) => { %><tr><td><%= r.full_name %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.entry_time || r.actual_arrival_time || '-' %></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.observation || '-' %></td><td><%= r.updated_at %></td></tr><% }) %>
+        <% if (!records.length) { %><tr><td colspan="7" class="empty">No hay registros para esta fecha.</td></tr><% } %>
+        <% records.forEach((r) => { %><tr><td><%= r.full_name %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.entry_time || r.actual_arrival_time || '-' %></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.observation || '-' %></td><td><% if (r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= r.worker_id %>&record_date=<%= r.record_date %>" target="_blank">Ver certificado</a><% } else { %>-<% } %></td><td><%= r.updated_at %></td></tr><% }) %>
       </tbody>
     </table>
   </div>

@@ -4,7 +4,7 @@
 
 const baseUrl = (process.env.STORE_API_URL || '').replace(/\/+$/, '');
 const token = process.env.STORE_API_TOKEN || '';
-const timeout = Number(process.env.STORE_API_TIMEOUT_MS || 8000);
+const timeout = Number(process.env.STORE_API_TIMEOUT_MS || 25000);
 
 function requireConfig() {
   if (!baseUrl) throw new Error('Falta STORE_API_URL.');
@@ -54,6 +54,10 @@ export const createBranch = (name) => call('createBranch', name);
 
 export const listAttendance = () => call('listAttendance');
 export const upsertAttendance = (record) => call('upsertAttendance', record);
+
+export const saveCertificate = (record) => call('saveCertificate', record);
+export const findCertificate = (workerId, recordDate) => call('findCertificate', String(workerId), String(recordDate));
+export const readCertificate = (workerId, recordDate) => call('readCertificate', String(workerId), String(recordDate));
 
 export const listVacations = () => call('listVacations');
 export const createVacation = (vacation) => call('createVacation', vacation);

@@ -17,6 +17,9 @@ const methods = {
   createBranch: { fn: db.createBranch, args: 1 },
   listAttendance: { fn: db.listAttendance, args: 0 },
   upsertAttendance: { fn: db.upsertAttendance, args: 1 },
+  saveCertificate: { fn: db.saveCertificate, args: 1 },
+  findCertificate: { fn: db.findCertificate, args: 2 },
+  readCertificate: { fn: db.readCertificate, args: 2 },
   listVacations: { fn: db.listVacations, args: 0 },
   createVacation: { fn: db.createVacation, args: 1 },
   listVacationDeductions: { fn: db.listVacationDeductions, args: 0 },
@@ -35,7 +38,7 @@ const host = process.env.STORE_API_HOST || '127.0.0.1';
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '32mb' }));
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'asistencias-store-api' });
@@ -59,6 +62,9 @@ app.post('/api/store/:method', authorize, async (req, res) => {
     console.error(`[store-api] ${req.params.method}:`, error.message);
     if (error.message === 'DUPLICATE_CEDULA' || error.message === 'DUPLICATE_BRANCH') {
       return res.status(409).json({ ok: false, error: error.message });
+    }
+    if (error.message?.startsWith('CERTIFICADO')) {
+      return res.status(400).json({ ok: false, error: error.message });
     }
     res.status(500).json({ ok: false, error: 'ERROR_INTERNO' });
   }
