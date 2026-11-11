@@ -232,7 +232,7 @@ async function buildDashboardData(query) {
   let chartBranch = { labels: [], data: [] };
   try {
     const workerMap = new Map(workers.map((w) => [String(w.id), w]));
-    const attendanceStatuses = ['ASISTENCIA NORMAL', 'FALTA JUSTIFICADA', 'FALTA INJUSTIFICADA', 'ATRASO', 'VACACIONES', 'PERMISO'];
+    const attendanceStatuses = ['ASISTENCIA NORMAL', 'FALTA JUSTIFICADA', 'FALTA INJUSTIFICADA', 'ATRASO', 'VACACIONES', 'PERMISO', 'DIA LIBRE'];
 
     // Últimos 6 meses (incluyendo el actual)
     const months = [];

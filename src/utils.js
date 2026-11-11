@@ -4,7 +4,8 @@ export const attendanceStatuses = [
   'FALTA INJUSTIFICADA',
   'ATRASO',
   'VACACIONES',
-  'PERMISO'
+  'PERMISO',
+  'DIA LIBRE'
 ];
 
 export function today() {

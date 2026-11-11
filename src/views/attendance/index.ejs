@@ -8,7 +8,8 @@
     'FALTA INJUSTIFICADA': 'Falta injustificada',
     'ATRASO': 'Atraso',
     'VACACIONES': 'Vacaciones',
-    'PERMISO': 'Permiso'
+    'PERMISO': 'Permiso',
+    'DIA LIBRE': 'Día libre'
   };
 %>
 
@@ -42,6 +43,7 @@
   .quick-table tr[data-status="FALTA INJUSTIFICADA"] { background: #fff5f6; }
   .quick-table tr[data-status="VACACIONES"] { background: #faf7ff; }
   .quick-table tr[data-status="PERMISO"] { background: #f2fdff; }
+  .quick-table tr[data-status="DIA LIBRE"] { background: #f5f7fa; }
 
   .cert-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #e8fbf4; color: #0f9f6e; font-size: .68rem; font-weight: 800; text-decoration: none; margin-bottom: 4px; }
   .cert-pick { display: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: #eef2f8; cursor: pointer; font-size: .95rem; }
@@ -66,7 +68,7 @@
 <section class="panel">
   <div class="section-title">
     <div>
-      <h2>Registro rápido por sucursal</h2>
+      <h2>Registro rápido por sucursal<% if (branch) { %> · <span class="branch-title"><%= branch %></span><% } %></h2>
       <p>Elige una sucursal y se despliega la tabla de sus trabajadores para llenarla y guardar todo de una vez.</p>
     </div>
     <form class="inline-form" method="get" action="/asistencia" id="quickFilterForm">
@@ -207,7 +209,7 @@
 <section class="panel">
   <div class="section-title">
     <div>
-      <h2>Registros del dia</h2>
+      <h2>Registros del dia<% if (branch) { %> · <span class="branch-title"><%= branch %></span><% } %></h2>
       <p><strong><%= records.length %></strong> registro(s) guardado(s) para <strong><%= branch || 'todas las sucursales' %></strong> el <strong><%= date %></strong>.</p>
     </div>
     <div class="export-actions">

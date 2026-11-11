@@ -188,6 +188,7 @@
     'ATRASO': '#f59e0b',
     'VACACIONES': '#8b5cf6',
     'PERMISO': '#06b6d4',
+    'DIA LIBRE': '#64748b',
     'Activo': '#10b981',
     'Sin registro hoy': '#f59e0b'
   };
@@ -269,6 +270,7 @@
     if (status === 'ATRASO' || status === 'Sin registro hoy') return 'warn';
     if (status === 'VACACIONES') return 'violet';
     if (status === 'PERMISO') return 'cyan';
+    if (status === 'DIA LIBRE') return 'muted';
     return '';
   }
 

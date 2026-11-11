@@ -46,7 +46,8 @@ attendanceRouter.get('/', async (req, res, next) => {
     const saved = Number(clean(req.query.saved)) || 0;
     const data = await attendanceViewData(date, branch);
     const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
-    res.render('attendance/index', { title: 'Registro de asistencia', date, branch, saved, ...data, statuses: attendanceStatuses, errors: [], exportQuery });
+    const title = branch ? `Asistencia · ${branch}` : 'Registro de asistencia';
+    res.render('attendance/index', { title, date, branch, saved, ...data, statuses: attendanceStatuses, errors: [], exportQuery });
   } catch (error) {
     next(error);
   }
@@ -318,7 +319,8 @@ attendanceRouter.get('/certificado', async (req, res, next) => {
 async function renderAttendanceWithErrors(res, date, errors, branch = '') {
   const data = await attendanceViewData(date, branch);
   const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
-  res.status(422).render('attendance/index', { title: 'Registro de asistencia', date, branch, saved: 0, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
+  const title = branch ? `Asistencia · ${branch}` : 'Registro de asistencia';
+  res.status(422).render('attendance/index', { title, date, branch, saved: 0, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
 }
 
 async function attendanceViewData(date, branch) {
@@ -423,6 +425,8 @@ function byName(a, b) {
 }
 
 function calculateLateMinutes({ status, entry, scheduled, expectedEntry, lunchOut, lunchIn, exit }) {
+  // Solo los estados de asistencia generan minutos de atraso; un dia libre, falta, vacaciones o permiso no.
+  if (status !== 'ASISTENCIA NORMAL' && status !== 'ATRASO') return 0;
   let lateMinutes = 0;
   if (status === 'ATRASO') {
     if (scheduled && entry) lateMinutes += minutesBetween(scheduled, entry);

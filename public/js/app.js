@@ -110,6 +110,12 @@ if (quickForm) {
     const expEntry = quickExpectedEntry?.value || '07:00';
     const scheduled = row.querySelector('.quick-row-scheduled')?.value || quickScheduled?.value || '';
 
+    // Un dia libre, falta, vacaciones o permiso no genera minutos de atraso.
+    if (status && status !== 'ASISTENCIA NORMAL' && status !== 'ATRASO') {
+      cell.textContent = '-';
+      return;
+    }
+
     let lateMinutes = 0;
     if (status === 'ATRASO' && scheduled && entry) {
       lateMinutes += Math.max(timeToMinutes(entry) - timeToMinutes(scheduled), 0);
