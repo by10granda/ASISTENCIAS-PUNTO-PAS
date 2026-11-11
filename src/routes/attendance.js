@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { sendExcel, sendPdf } from '../exporters.js';
 import {
+  deleteAttendanceRecord,
   findCertificate,
   findWorker,
   listAttendance,
@@ -8,6 +9,7 @@ import {
   listWorkers,
   readCertificate,
   saveCertificate,
+  updateAttendanceRecord,
   upsertAttendance
 } from '../store.js';
 import { attendanceStatuses, clean, isValidDate, minutesBetween, requireText, today } from '../utils.js';
@@ -150,17 +152,8 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
       if (status === 'ATRASO') {
         if (!scheduledForRow) errors.push('Ingrese la hora establecida para calcular los atrasos.');
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
-        if (scheduledForRow && entry) lateMinutes = minutesBetween(scheduledForRow, entry);
-      } else if (entry) {
-        // Entrada: solo penaliza si se pasa de la hora esperada.
-        lateMinutes += minutesBetween(expectedEntry, entry);
       }
-      // Almuerzo: puede tomarse a cualquier hora del dia; solo penaliza si dura mas de 60 minutos.
-      if (lunchOut && lunchIn) {
-        lateMinutes += Math.max(minutesBetween(lunchOut, lunchIn) - 60, 0);
-      }
-      // Salida: solo penaliza si el trabajador se va ANTES de las 18:00.
-      if (exit) lateMinutes += minutesBetween(exit, '18:00');
+      lateMinutes = calculateLateMinutes({ status, entry, scheduled: scheduledForRow, expectedEntry, lunchOut, lunchIn, exit });
       if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
       if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 
@@ -221,6 +214,85 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
     }
 
     res.redirect(`/asistencia?date=${encodeURIComponent(recordDate)}&branch=${encodeURIComponent(branch)}&saved=${pending.length}`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+attendanceRouter.post('/registro/editar', async (req, res, next) => {
+  try {
+    const records = await listAttendance();
+    const existing = records.find((record) => String(record.id) === String(req.body.id));
+    if (!existing) return res.status(404).json({ ok: false, error: 'El registro ya no existe.' });
+
+    const recordDate = clean(req.body.record_date);
+    const status = clean(req.body.status);
+    const entry = clean(req.body.entry_time);
+    const lunchOut = clean(req.body.lunch_out);
+    const lunchIn = clean(req.body.lunch_in);
+    const exit = clean(req.body.exit_time);
+    const scheduled = clean(req.body.scheduled_entry_time);
+    const actual = clean(req.body.actual_arrival_time);
+    const errors = [];
+
+    if (!isValidDate(recordDate)) errors.push('Seleccione una fecha valida.');
+    if (!attendanceStatuses.includes(status)) errors.push('Seleccione un estado valido.');
+    if (status === 'ASISTENCIA NORMAL' && !entry) errors.push('Ingrese la hora de entrada.');
+    if (status === 'ATRASO' && (!scheduled || !actual)) errors.push('Ingrese la hora establecida y la hora real de llegada.');
+    if (status === 'FALTA JUSTIFICADA' && !clean(req.body.justified_reason)) errors.push('Ingrese el motivo de la falta justificada.');
+    if (status === 'PERMISO' && !clean(req.body.permit_reason)) errors.push('Ingrese el motivo del permiso.');
+    const certificate = req.body.certificate_data ? normalizeCertificateUpload(req.body) : null;
+    if (certificate && status !== 'FALTA JUSTIFICADA') errors.push('El certificado solo aplica a faltas justificadas.');
+    if (certificate && !allowedCertificateMimes.has(certificate.mime_type)) errors.push('El certificado debe ser una imagen o un PDF.');
+    if (certificate && certificate.size_bytes > maxCertificateBytes) errors.push('El certificado supera los 10 MB.');
+    if (errors.length) return res.status(422).json({ ok: false, errors });
+
+    const record = {
+      worker_id: existing.worker_id,
+      record_date: recordDate,
+      status,
+      entry_time: entry,
+      scheduled_entry_time: scheduled,
+      actual_arrival_time: actual,
+      late_minutes: calculateLateMinutes({ status, entry: status === 'ATRASO' ? actual : entry, scheduled, expectedEntry: '07:00', lunchOut, lunchIn, exit }),
+      observation: clean(req.body.observation),
+      registered_by: clean(req.body.registered_by) || 'Administrador',
+      justified_reason: clean(req.body.justified_reason),
+      has_support_doc: certificate ? 1 : (Number(existing.has_support_doc) ? 1 : 0),
+      permit_time_out: clean(req.body.permit_time_out),
+      permit_time_return: clean(req.body.permit_time_return),
+      permit_reason: clean(req.body.permit_reason),
+      permit_full_day: req.body.permit_full_day ? 1 : 0,
+      lunch_out: lunchOut,
+      lunch_in: lunchIn,
+      exit_time: exit
+    };
+
+    await updateAttendanceRecord(existing.id, record);
+    if (certificate) {
+      await saveCertificate({
+        worker_id: existing.worker_id,
+        record_date: recordDate,
+        file_name: certificate.file_name,
+        mime_type: certificate.mime_type,
+        data_base64: certificate.data_base64,
+        uploaded_by: record.registered_by
+      });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    if (error.message === 'REGISTRO_DUPLICADO') {
+      return res.status(409).json({ ok: false, error: 'Ya existe un registro para ese trabajador en esa fecha.' });
+    }
+    next(error);
+  }
+});
+
+attendanceRouter.post('/registro/eliminar', async (req, res, next) => {
+  try {
+    const deleted = await deleteAttendanceRecord(clean(req.body.id));
+    if (!deleted) return res.status(404).json({ ok: false, error: 'El registro ya no existe.' });
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }
@@ -348,4 +420,21 @@ async function validateAttendance(record) {
 
 function byName(a, b) {
   return a.full_name.localeCompare(b.full_name);
+}
+
+function calculateLateMinutes({ status, entry, scheduled, expectedEntry, lunchOut, lunchIn, exit }) {
+  let lateMinutes = 0;
+  if (status === 'ATRASO') {
+    if (scheduled && entry) lateMinutes += minutesBetween(scheduled, entry);
+  } else if (entry) {
+    // Entrada: solo penaliza si se pasa de la hora esperada.
+    lateMinutes += minutesBetween(expectedEntry || '07:00', entry);
+  }
+  // Almuerzo: puede tomarse a cualquier hora del dia; solo penaliza si dura mas de 60 minutos.
+  if (lunchOut && lunchIn) {
+    lateMinutes += Math.max(minutesBetween(lunchOut, lunchIn) - 60, 0);
+  }
+  // Salida: solo penaliza si el trabajador se va ANTES de las 18:00.
+  if (exit) lateMinutes += minutesBetween(exit, '18:00');
+  return lateMinutes;
 }

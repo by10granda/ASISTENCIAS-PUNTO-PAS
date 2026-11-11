@@ -284,6 +284,52 @@ export async function upsertAttendance(record) {
   getDb().prepare(attendanceUpsertSql).run(...attendanceValues(record), now, now);
 }
 
+export async function updateAttendanceRecord(id, record) {
+  const recordId = toInteger(id);
+  if (!recordId) throw new Error('REGISTRO_INVALIDO');
+  const columns = attendanceColumns.filter((column) => column !== 'worker_id');
+  const values = columns.map((column) => {
+    if (column === 'late_minutes' || column === 'has_support_doc' || column === 'permit_full_day') {
+      return toInteger(record[column]);
+    }
+    return textValue(record[column]);
+  });
+  try {
+    const result = getDb().prepare(`
+      UPDATE attendance_records
+      SET ${columns.map((column) => `${column} = ?`).join(', ')}, updated_at = ?
+      WHERE id = ?
+    `).run(...values, timestamp(), recordId);
+    return result.changes > 0;
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new Error('REGISTRO_DUPLICADO');
+    throw error;
+  }
+}
+
+export async function deleteAttendanceRecord(id) {
+  const recordId = toInteger(id);
+  if (!recordId) throw new Error('REGISTRO_INVALIDO');
+  const db = getDb();
+  const row = db.prepare('SELECT worker_id, record_date FROM attendance_records WHERE id = ?').get(recordId);
+  if (!row) return false;
+
+  const certificate = db.prepare('SELECT mime_type, file_name FROM certificates WHERE worker_id = ? AND record_date = ?').get(row.worker_id, row.record_date);
+  if (certificate) {
+    const suffix = certificateExtensions[certificate.mime_type] || path.extname(String(certificate.file_name || ''));
+    const filePath = path.join(certificateDir(), `certificado-trabajador-${row.worker_id}-${row.record_date}${suffix}`);
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      // El archivo pudo haberse eliminado antes; continuamos con la limpieza en la base.
+    }
+    db.prepare('DELETE FROM certificates WHERE worker_id = ? AND record_date = ?').run(row.worker_id, row.record_date);
+  }
+
+  const result = db.prepare('DELETE FROM attendance_records WHERE id = ?').run(recordId);
+  return result.changes > 0;
+}
+
 function certificateDir() {
   const configured = process.env.CERTIFICATES_DIR;
   return configured ? path.resolve(configured) : path.join(path.dirname(databaseFile), 'certificados');

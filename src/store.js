@@ -36,6 +36,8 @@ export const {
   createBranch,
   listAttendance,
   upsertAttendance,
+  updateAttendanceRecord,
+  deleteAttendanceRecord,
   saveCertificate,
   findCertificate,
   readCertificate,

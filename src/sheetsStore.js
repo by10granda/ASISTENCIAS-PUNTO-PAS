@@ -157,6 +157,23 @@ export async function upsertAttendance(record) {
   await appendRow(sheetsConfig.attendance, { ...record, id: nextId(rows), created_at: now, updated_at: now });
 }
 
+export async function updateAttendanceRecord(id, record) {
+  const rows = await readRowsWithNumbers(sheetsConfig.attendance);
+  const existing = rows.find((row) => String(row.id) === String(id));
+  if (!existing) return false;
+  const now = timestamp();
+  await updateRow(sheetsConfig.attendance, existing.rowNumber, { ...existing, ...record, id: existing.id, created_at: existing.created_at, updated_at: now });
+  return true;
+}
+
+export async function deleteAttendanceRecord(id) {
+  const rows = await readRowsWithNumbers(sheetsConfig.attendance);
+  const existing = rows.find((row) => String(row.id) === String(id));
+  if (!existing) return false;
+  await deleteRows(sheetsConfig.attendance, [existing.rowNumber]);
+  return true;
+}
+
 export async function listVacations() {
   return normalizeNumbers(await readRows(sheetsConfig.vacations), ['total_days']);
 }

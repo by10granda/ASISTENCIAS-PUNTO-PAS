@@ -54,6 +54,8 @@ export const createBranch = (name) => call('createBranch', name);
 
 export const listAttendance = () => call('listAttendance');
 export const upsertAttendance = (record) => call('upsertAttendance', record);
+export const updateAttendanceRecord = (id, record) => call('updateAttendanceRecord', String(id), record);
+export const deleteAttendanceRecord = (id) => call('deleteAttendanceRecord', String(id));
 
 export const saveCertificate = (record) => call('saveCertificate', record);
 export const findCertificate = (workerId, recordDate) => call('findCertificate', String(workerId), String(recordDate));

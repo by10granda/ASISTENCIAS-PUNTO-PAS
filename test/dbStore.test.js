@@ -79,6 +79,53 @@ test('asistencia hace upsert por trabajador y fecha', async () => {
   assert.equal(typeof records[0].worker_id, 'string');
 });
 
+test('actualiza y elimina un registro de asistencia por id', async () => {
+  const worker = (await db.listWorkers())[0];
+  await db.upsertAttendance({
+    worker_id: worker.id,
+    record_date: '2026-11-10',
+    status: 'ASISTENCIA NORMAL',
+    entry_time: '07:05',
+    scheduled_entry_time: '',
+    actual_arrival_time: '',
+    late_minutes: 20,
+    observation: '',
+    registered_by: 'Admin',
+    justified_reason: '',
+    has_support_doc: 0,
+    permit_time_out: '',
+    permit_time_return: '',
+    permit_reason: '',
+    permit_full_day: 0,
+    lunch_out: '12:00',
+    lunch_in: '13:10',
+    exit_time: '17:50'
+  });
+
+  const before = (await db.listAttendance()).find((record) => record.record_date === '2026-11-10');
+  assert.ok(before.id);
+
+  assert.equal(await db.updateAttendanceRecord(before.id, {
+    ...before,
+    entry_time: '07:10',
+    lunch_out: '12:00',
+    lunch_in: '14:10',
+    exit_time: '17:50',
+    late_minutes: 90,
+    observation: 'editado'
+  }), true);
+
+  const after = (await db.listAttendance()).find((record) => record.id === before.id);
+  assert.equal(after.entry_time, '07:10');
+  assert.equal(after.lunch_in, '14:10');
+  assert.equal(after.late_minutes, 90);
+  assert.equal(after.observation, 'editado');
+
+  assert.equal(await db.deleteAttendanceRecord(before.id), true);
+  assert.equal((await db.listAttendance()).some((record) => record.id === before.id), false);
+  assert.equal(await db.deleteAttendanceRecord(before.id), false);
+});
+
 test('registra vacaciones, bajas y novedades', async () => {
   const worker = (await db.listWorkers())[0];
   await db.createVacation({

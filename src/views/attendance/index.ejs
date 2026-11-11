@@ -216,14 +216,118 @@
     </div>
   </div>
   <div class="table-wrap">
-    <table>
-      <thead><tr><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Salida almuerzo</th><th>Regreso almuerzo</th><th>Hora salida</th><th>Atraso</th><th>Observacion</th><th>Certificado</th><th>Actualizado</th></tr></thead>
+    <table id="recordsTable">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Trabajador</th>
+          <th>Cedula</th>
+          <th>Sucursal</th>
+          <th>Estado</th>
+          <th>Entrada</th>
+          <th>Salida almuerzo</th>
+          <th>Regreso almuerzo</th>
+          <th>Hora salida</th>
+          <th>Hora establecida</th>
+          <th>Hora real</th>
+          <th>Atraso</th>
+          <th>Observacion</th>
+          <th>Certificado</th>
+          <th>Usuario</th>
+          <th>Actualizado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
       <tbody>
-        <% if (!records.length) { %><tr><td colspan="10" class="empty">No hay registros para esta fecha.</td></tr><% } %>
-        <% records.forEach((r) => { %><tr><td><%= r.full_name %></td><td><span class="pill"><%= r.status %></span></td><td><%= r.entry_time || r.actual_arrival_time || '-' %></td><td><%= r.lunch_out || '-' %></td><td><%= r.lunch_in || '-' %></td><td><%= r.exit_time || '-' %></td><td><%= r.late_minutes || 0 %> min</td><td><%= r.observation || '-' %></td><td><% if (r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= r.worker_id %>&record_date=<%= r.record_date %>" target="_blank">Ver certificado</a><% } else { %>-<% } %></td><td><%= r.updated_at %></td></tr><% }) %>
+        <% if (!records.length) { %><tr><td colspan="17" class="empty">No hay registros para esta fecha.</td></tr><% } %>
+        <% records.forEach((r) => { %>
+          <tr
+            data-id="<%= r.id %>"
+            data-worker-id="<%= r.worker_id %>"
+            data-record-date="<%= r.record_date %>"
+            data-status="<%= r.status %>"
+            data-entry-time="<%= r.entry_time || '' %>"
+            data-scheduled-entry="<%= r.scheduled_entry_time || '' %>"
+            data-actual-arrival="<%= r.actual_arrival_time || '' %>"
+            data-late-minutes="<%= r.late_minutes || 0 %>"
+            data-observation="<%= r.observation || '' %>"
+            data-registered-by="<%= r.registered_by || '' %>"
+            data-justified-reason="<%= r.justified_reason || '' %>"
+            data-permit-time-out="<%= r.permit_time_out || '' %>"
+            data-permit-time-return="<%= r.permit_time_return || '' %>"
+            data-permit-reason="<%= r.permit_reason || '' %>"
+            data-permit-full-day="<%= Number(r.permit_full_day) ? '1' : '0' %>"
+            data-lunch-out="<%= r.lunch_out || '' %>"
+            data-lunch-in="<%= r.lunch_in || '' %>"
+            data-exit-time="<%= r.exit_time || '' %>"
+            data-full-name="<%= r.full_name %>"
+            data-cert-url="<%= r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc) ? ('/asistencia/certificado?worker_id=' + r.worker_id + '&record_date=' + r.record_date) : '' %>"
+          >
+            <td><%= r.record_date %></td>
+            <td><%= r.full_name %></td>
+            <td><%= r.cedula || '-' %></td>
+            <td><%= r.branch || '-' %></td>
+            <td><span class="pill"><%= r.status %></span></td>
+            <td><%= r.entry_time || r.actual_arrival_time || '-' %></td>
+            <td><%= r.lunch_out || '-' %></td>
+            <td><%= r.lunch_in || '-' %></td>
+            <td><%= r.exit_time || '-' %></td>
+            <td><%= r.scheduled_entry_time || '-' %></td>
+            <td><%= r.actual_arrival_time || '-' %></td>
+            <td><%= r.late_minutes || 0 %> min</td>
+            <td><%= r.observation || '-' %></td>
+            <td><% if (r.status === 'FALTA JUSTIFICADA' && Number(r.has_support_doc)) { %><a href="/asistencia/certificado?worker_id=<%= r.worker_id %>&record_date=<%= r.record_date %>" target="_blank">Ver certificado</a><% } else { %>-<% } %></td>
+            <td><%= r.registered_by || '-' %></td>
+            <td><%= r.updated_at %></td>
+            <td class="row-actions">
+              <button type="button" class="button small ghost record-edit">Editar</button>
+              <button type="button" class="button small danger-button record-delete">Eliminar</button>
+            </td>
+          </tr>
+        <% }) %>
       </tbody>
     </table>
   </div>
 </section>
+
+<div class="modal" id="recordModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recordModalTitle">
+    <div class="modal-head">
+      <h2 id="recordModalTitle">Editar registro de asistencia</h2>
+      <button type="button" class="modal-close" id="recordModalClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <form id="recordEditForm" class="form-grid">
+      <input type="hidden" name="id">
+      <label>Trabajador<input name="worker_name" readonly></label>
+      <label>Fecha<input type="date" name="record_date" required></label>
+      <label>Estado
+        <select name="status">
+          <% statuses.forEach((s) => { %><option value="<%= s %>"><%= s %></option><% }) %>
+        </select>
+      </label>
+      <label>Hora entrada<input type="time" name="entry_time"></label>
+      <label>Salida almuerzo<input type="time" name="lunch_out"></label>
+      <label>Regreso almuerzo<input type="time" name="lunch_in"></label>
+      <label>Hora salida<input type="time" name="exit_time"></label>
+      <label>Hora establecida<input type="time" name="scheduled_entry_time"></label>
+      <label>Hora real<input type="time" name="actual_arrival_time"></label>
+      <label>Usuario que registra<input name="registered_by"></label>
+      <label class="span-2">Observacion<textarea name="observation" rows="2"></textarea></label>
+      <label>Motivo falta justificada<input name="justified_reason"></label>
+      <label>Motivo permiso<input name="permit_reason"></label>
+      <label>Permiso desde<input type="time" name="permit_time_out"></label>
+      <label>Permiso hasta<input type="time" name="permit_time_return"></label>
+      <label class="checkbox"><input type="checkbox" name="permit_full_day"> Permiso de dia completo</label>
+      <div class="span-2 cert-edit">
+        <p>Certificado actual: <span id="recordCertLink">-</span></p>
+        <label>Reemplazar certificado (solo faltas justificadas)<input type="file" name="certificate" accept="image/png,image/jpeg,image/webp,application/pdf"></label>
+      </div>
+      <div class="actions span-2">
+        <button type="button" class="button ghost" id="recordEditCancel">Cancelar</button>
+        <button type="submit">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <%- include('../partials/footer') %>

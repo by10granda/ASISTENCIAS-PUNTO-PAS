@@ -310,3 +310,128 @@ if (quickForm) {
     if (!confirm(`Se guardaran ${count} registro(s) de esta sucursal. ¿Continuar?`)) event.preventDefault();
   });
 }
+
+const recordsTable = document.querySelector('#recordsTable');
+const recordModal = document.querySelector('#recordModal');
+if (recordsTable && recordModal) {
+  const recordForm = document.querySelector('#recordEditForm');
+
+  function openRecordModal(row) {
+    recordForm.elements.id.value = row.dataset.id;
+    recordForm.elements.worker_name.value = row.dataset.fullName || '';
+    recordForm.elements.record_date.value = row.dataset.recordDate || '';
+    recordForm.elements.status.value = row.dataset.status || '';
+    recordForm.elements.entry_time.value = row.dataset.entryTime || '';
+    recordForm.elements.lunch_out.value = row.dataset.lunchOut || '';
+    recordForm.elements.lunch_in.value = row.dataset.lunchIn || '';
+    recordForm.elements.exit_time.value = row.dataset.exitTime || '';
+    recordForm.elements.scheduled_entry_time.value = row.dataset.scheduledEntry || '';
+    recordForm.elements.actual_arrival_time.value = row.dataset.actualArrival || '';
+    recordForm.elements.registered_by.value = row.dataset.registeredBy || '';
+    recordForm.elements.observation.value = row.dataset.observation || '';
+    recordForm.elements.justified_reason.value = row.dataset.justifiedReason || '';
+    recordForm.elements.permit_reason.value = row.dataset.permitReason || '';
+    recordForm.elements.permit_time_out.value = row.dataset.permitTimeOut || '';
+    recordForm.elements.permit_time_return.value = row.dataset.permitTimeReturn || '';
+    recordForm.elements.permit_full_day.checked = row.dataset.permitFullDay === '1';
+    recordForm.elements.certificate.value = '';
+    const certLink = document.querySelector('#recordCertLink');
+    certLink.textContent = '';
+    if (row.dataset.certUrl) {
+      const link = document.createElement('a');
+      link.href = row.dataset.certUrl;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = 'Ver certificado actual';
+      certLink.appendChild(link);
+    } else {
+      certLink.textContent = '-';
+    }
+    recordModal.hidden = false;
+  }
+
+  function closeRecordModal() {
+    recordModal.hidden = true;
+  }
+
+  recordsTable.addEventListener('click', async (event) => {
+    const editButton = event.target.closest('.record-edit');
+    if (editButton) {
+      openRecordModal(editButton.closest('tr'));
+      return;
+    }
+
+    const deleteButton = event.target.closest('.record-delete');
+    if (!deleteButton) return;
+    const row = deleteButton.closest('tr');
+    const name = row.dataset.fullName || 'este registro';
+    if (!confirm(`¿Eliminar el registro de ${name} del ${row.dataset.recordDate}? Esta accion no se puede deshacer.`)) return;
+
+    deleteButton.disabled = true;
+    try {
+      const response = await fetch('/asistencia/registro/eliminar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: row.dataset.id })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) throw new Error(payload.error || 'No se pudo eliminar el registro.');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message);
+      deleteButton.disabled = false;
+    }
+  });
+
+  recordForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const submit = recordForm.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const formData = new FormData(recordForm);
+      const data = {};
+      for (const [key, value] of formData.entries()) {
+        if (key === 'certificate') continue;
+        data[key] = value;
+      }
+      data.permit_full_day = recordForm.elements.permit_full_day.checked ? 1 : 0;
+      const file = recordForm.elements.certificate.files?.[0];
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) throw new Error('El certificado supera los 10 MB permitidos.');
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        }
+        data.certificate_data = btoa(binary);
+        data.certificate_file_name = file.name;
+        data.certificate_mime_type = file.type || '';
+      }
+      const response = await fetch('/asistencia/registro/editar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.ok) {
+        const message = Array.isArray(payload.errors) ? payload.errors.join('\n') : (payload.error || 'No se pudieron guardar los cambios.');
+        throw new Error(message);
+      }
+      window.location.reload();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  document.querySelector('#recordModalClose')?.addEventListener('click', closeRecordModal);
+  document.querySelector('#recordEditCancel')?.addEventListener('click', closeRecordModal);
+  recordModal.addEventListener('click', (event) => {
+    if (event.target === recordModal) closeRecordModal();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !recordModal.hidden) closeRecordModal();
+  });
+}

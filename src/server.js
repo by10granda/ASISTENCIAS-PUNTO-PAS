@@ -20,6 +20,7 @@ let initPromise;
 app.set('view engine', 'ejs');
 app.set('views', path.resolve('src/views'));
 app.use(express.urlencoded({ extended: true, limit: '40mb' }));
+app.use(express.json({ limit: '40mb' }));
 
 const appUser = process.env.APP_USERNAME;
 const appPassword = process.env.APP_PASSWORD;
