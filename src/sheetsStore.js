@@ -157,6 +157,13 @@ export async function upsertAttendance(record) {
   await appendRow(sheetsConfig.attendance, { ...record, id: nextId(rows), created_at: now, updated_at: now });
 }
 
+export async function upsertAttendanceBatch(records) {
+  for (const record of records) {
+    await upsertAttendance(record);
+  }
+  return records.length;
+}
+
 export async function updateAttendanceRecord(id, record) {
   const rows = await readRowsWithNumbers(sheetsConfig.attendance);
   const existing = rows.find((row) => String(row.id) === String(id));

@@ -18,6 +18,7 @@ const methods = {
   createBranch: { fn: db.createBranch, args: 1 },
   listAttendance: { fn: db.listAttendance, args: 0 },
   upsertAttendance: { fn: db.upsertAttendance, args: 1 },
+  upsertAttendanceBatch: { fn: db.upsertAttendanceBatch, args: 1 },
   updateAttendanceRecord: { fn: db.updateAttendanceRecord, args: 2 },
   deleteAttendanceRecord: { fn: db.deleteAttendanceRecord, args: 1 },
   saveCertificate: { fn: db.saveCertificate, args: 1 },

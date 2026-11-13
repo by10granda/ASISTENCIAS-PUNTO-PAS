@@ -301,6 +301,23 @@ export async function upsertAttendance(record) {
   await run(attendanceUpsertSql, [...attendanceValues(record), now, now]);
 }
 
+export async function upsertAttendanceBatch(records) {
+  if (!Array.isArray(records) || !records.length) return 0;
+  const now = timestamp();
+  let total = 0;
+  // libSQL acepta lotes; se envian de 100 en 100 para no exceder el limite.
+  for (let index = 0; index < records.length; index += 100) {
+    const chunk = records.slice(index, index + 100);
+    const statements = chunk.map((record) => ({
+      sql: attendanceUpsertSql,
+      args: [...attendanceValues(record), now, now]
+    }));
+    await getClient().batch(statements, 'write');
+    total += chunk.length;
+  }
+  return total;
+}
+
 export async function updateAttendanceRecord(id, record) {
   const recordId = toInteger(id);
   if (!recordId) throw new Error('REGISTRO_INVALIDO');

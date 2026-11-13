@@ -284,6 +284,24 @@ export async function upsertAttendance(record) {
   getDb().prepare(attendanceUpsertSql).run(...attendanceValues(record), now, now);
 }
 
+export async function upsertAttendanceBatch(records) {
+  if (!Array.isArray(records) || !records.length) return 0;
+  const db = getDb();
+  const statement = db.prepare(attendanceUpsertSql);
+  const now = timestamp();
+  db.exec('BEGIN');
+  try {
+    for (const record of records) {
+      statement.run(...attendanceValues(record), now, now);
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  return records.length;
+}
+
 export async function updateAttendanceRecord(id, record) {
   const recordId = toInteger(id);
   if (!recordId) throw new Error('REGISTRO_INVALIDO');

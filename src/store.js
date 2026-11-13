@@ -39,6 +39,7 @@ export const {
   createBranch,
   listAttendance,
   upsertAttendance,
+  upsertAttendanceBatch,
   updateAttendanceRecord,
   deleteAttendanceRecord,
   saveCertificate,

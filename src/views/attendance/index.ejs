@@ -17,6 +17,10 @@
   <div class="alert success">Se guardaron <strong><%= saved %></strong> registro(s) de <strong><%= branch || 'la sucursal' %></strong> para el <strong><%= date %></strong>.</div>
 <% } %>
 
+<% if (imported) { %>
+  <div class="alert success">Se importaron <strong><%= imported %></strong> registro(s) desde el reporte del biométrico para <strong><%= branch %></strong>.</div>
+<% } %>
+
 <style>
   .quick-empty { text-align: center; padding: 36px 18px; border: 1px dashed #c7d2e6; border-radius: 14px; background: #f8fafc; color: var(--muted); }
   .quick-empty strong { display: block; color: #1e293b; margin-bottom: 4px; font-size: 1rem; }
@@ -63,6 +67,53 @@
     .quick-buttons { margin-left: 0; }
     .quick-table { min-width: 820px; }
   }
+
+  .quick-head-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex: 1; }
+  .quick-head-actions .inline-form { flex: 0 1 auto; flex-wrap: wrap; }
+  .quick-head-actions .button { padding: 11px 16px; }
+  @media (max-width: 900px) {
+    .quick-head-actions { flex-direction: column; align-items: stretch; }
+  }
+
+  .biometric-card { width: min(1120px, 100%); }
+  .biometric-range { margin-top: 4px; font-size: .82rem; }
+  .biometric-loading { padding: 30px; text-align: center; color: var(--muted); font-weight: 700; }
+  .biometric-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .biometric-chip { padding: 6px 10px; border-radius: 999px; background: #eef3ff; color: var(--primary-dark); font-size: .78rem; font-weight: 800; }
+  .biometric-chip.warn { background: #fff4e5; color: #b97000; }
+  .biometric-chip.ok { background: #e8fbf4; color: #0f7f5a; }
+  .biometric-block { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+  .biometric-block > summary { cursor: pointer; font-size: .9rem; color: var(--text); }
+  .biometric-hint { color: var(--muted); font-weight: 600; font-size: .78rem; margin-left: 6px; }
+  .biometric-map-wrap { max-height: 30vh; overflow: auto; margin-top: 10px; }
+  .biometric-days-wrap { max-height: 46vh; overflow: auto; margin-top: 10px; }
+  .biometric-table { min-width: 660px; font-size: .84rem; }
+  .biometric-table thead th { position: sticky; top: 0; z-index: 1; background: #eef4ff; font-size: .68rem; }
+  .biometric-table td { padding: 6px 8px; vertical-align: middle; }
+  .biometric-table select, .biometric-table input[type="time"] { padding: 6px 7px; border-radius: 8px; font-size: .8rem; }
+  .biometric-table .biometric-worker { font-weight: 700; }
+  .biometric-table .biometric-worker small { display: block; color: var(--muted); font-weight: 600; }
+  .biometric-table tr.unmapped { background: #fff8f0; }
+  .biometric-table tr.removed { opacity: .45; }
+  .biometric-table tr.removed .biometric-worker { text-decoration: line-through; }
+  .biometric-badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: .7rem; font-weight: 800; white-space: nowrap; }
+  .biometric-badge.exact { background: #e8fbf4; color: #0f7f5a; }
+  .biometric-badge.probable { background: #eef3ff; color: var(--primary-dark); }
+  .biometric-badge.ambiguous { background: #fff4e5; color: #b97000; }
+  .biometric-badge.none { background: #fdecef; color: var(--danger); }
+  .biometric-filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .biometric-filters input[type="search"] { flex: 1; min-width: 200px; }
+  .biometric-check { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: .8rem; }
+  .biometric-check input { width: auto; }
+  .biometric-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .biometric-actions span { font-size: .82rem; font-weight: 700; color: var(--muted); }
+  .biometric-actions > div { display: flex; gap: 10px; }
+  .biometric-late { text-align: center; font-weight: 800; white-space: nowrap; color: #c27803; }
+  .biometric-remove { background: #fdecef; color: var(--danger); padding: 5px 10px; border-radius: 8px; }
+  @media (max-width: 700px) {
+    .biometric-actions { flex-direction: column; align-items: stretch; }
+    .biometric-actions > div { flex-direction: column-reverse; }
+  }
 </style>
 
 <section class="panel">
@@ -71,14 +122,20 @@
       <h2>Registro rápido por sucursal<% if (branch) { %> · <span class="branch-title"><%= branch %></span><% } %></h2>
       <p>Elige una sucursal y se despliega la tabla de sus trabajadores para llenarla y guardar todo de una vez.</p>
     </div>
-    <form class="inline-form" method="get" action="/asistencia" id="quickFilterForm">
-      <select name="branch" id="quickBranch">
-        <option value="">Seleccione sucursal...</option>
-        <% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %>
-      </select>
-      <input type="date" name="date" id="quickDate" value="<%= date %>">
-      <button>Abrir tabla</button>
-    </form>
+    <div class="quick-head-actions">
+      <form class="inline-form" method="get" action="/asistencia" id="quickFilterForm">
+        <select name="branch" id="quickBranch">
+          <option value="">Seleccione sucursal...</option>
+          <% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %>
+        </select>
+        <input type="date" name="date" id="quickDate" value="<%= date %>">
+        <button>Abrir tabla</button>
+      </form>
+      <% if (canImport) { %>
+        <button type="button" class="button" id="biometricOpen">Añadir tabla</button>
+        <input type="file" id="biometricFile" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+      <% } %>
+    </div>
   </div>
 
   <% if (!branch) { %>
@@ -292,6 +349,78 @@
   </div>
 </section>
 
+<% if (canImport) { %>
+<div class="modal" id="biometricModal" hidden data-branch="<%= biometricBranch %>">
+  <div class="modal-card biometric-card" role="dialog" aria-modal="true" aria-labelledby="biometricTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="biometricTitle">Añadir tabla · <%= biometricBranch %></h2>
+        <p id="biometricRange" class="biometric-range">Selecciona el reporte Excel del biométrico.</p>
+      </div>
+      <button type="button" class="modal-close" id="biometricClose" aria-label="Cerrar">&times;</button>
+    </div>
+
+    <div id="biometricLoading" class="biometric-loading" hidden>Leyendo el archivo del biométrico...</div>
+    <div id="biometricError" class="alert" hidden></div>
+
+    <div id="biometricBody" hidden>
+      <div class="biometric-summary" id="biometricSummary"></div>
+
+      <details class="biometric-block" open>
+        <summary><strong>Trabajadores del Excel</strong> <span id="biometricMatchInfo" class="biometric-hint"></span></summary>
+        <div class="table-wrap biometric-map-wrap">
+          <table class="biometric-table">
+            <thead>
+              <tr>
+                <th>Nombre en el Excel</th>
+                <th>ID</th>
+                <th>Coincidencia</th>
+                <th>Trabajador del sistema</th>
+              </tr>
+            </thead>
+            <tbody id="biometricMapBody"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="biometric-block" open>
+        <summary><strong>Días con marcas</strong> <span id="biometricDayInfo" class="biometric-hint"></span></summary>
+        <div class="biometric-filters">
+          <label class="biometric-check"><input type="checkbox" id="biometricOnlyMapped" checked> Mostrar solo trabajadores asignados</label>
+          <input type="search" id="biometricSearch" placeholder="Buscar trabajador o fecha...">
+        </div>
+        <div class="table-wrap biometric-days-wrap">
+          <table class="biometric-table biometric-days">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Entrada</th>
+                <th>Sal. almuerzo</th>
+                <th>Reg. almuerzo</th>
+                <th>Salida</th>
+                <th>Atraso</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="biometricDayBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+
+    <div class="biometric-actions">
+      <span id="biometricStatus">Selecciona un archivo para comenzar.</span>
+      <div>
+        <button type="button" class="button ghost" id="biometricCancel">Cancelar</button>
+        <button type="button" id="biometricSave" disabled>Guardar datos</button>
+      </div>
+    </div>
+  </div>
+</div>
+<% } %>
+
 <div class="modal" id="recordModal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recordModalTitle">
     <div class="modal-head">
@@ -332,4 +461,5 @@
   </div>
 </div>
 
+<% if (canImport) { %><script src="/js/biometric.js"></script><% } %>
 <%- include('../partials/footer') %>

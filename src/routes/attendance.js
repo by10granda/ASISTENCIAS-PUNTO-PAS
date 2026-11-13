@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { parseBiometricReport, suggestMatches } from '../biometricReport.js';
 import { sendExcel, sendPdf } from '../exporters.js';
 import {
   deleteAttendanceRecord,
@@ -10,7 +11,8 @@ import {
   readCertificate,
   saveCertificate,
   updateAttendanceRecord,
-  upsertAttendance
+  upsertAttendance,
+  upsertAttendanceBatch
 } from '../store.js';
 import { attendanceStatuses, clean, isValidDate, minutesBetween, requireText, today } from '../utils.js';
 
@@ -19,6 +21,9 @@ export const attendanceRouter = Router();
 const allowedCertificateMimes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const maxCertificateBytes = 10 * 1024 * 1024;
 const maxBulkCertificateBytes = 30 * 1024 * 1024;
+const biometricBranch = 'VARIEDADES PAS';
+const maxBiometricBytes = 10 * 1024 * 1024;
+const biometricStatuses = new Set(['ASISTENCIA NORMAL', 'ATRASO', 'DIA LIBRE']);
 
 const attendanceColumns = [
   { header: 'Fecha', key: 'record_date', width: 12 },
@@ -44,10 +49,23 @@ attendanceRouter.get('/', async (req, res, next) => {
     const date = clean(req.query.date) || today();
     const branch = clean(req.query.branch);
     const saved = Number(clean(req.query.saved)) || 0;
+    const imported = Number(clean(req.query.imported)) || 0;
     const data = await attendanceViewData(date, branch);
     const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
     const title = branch ? `Asistencia · ${branch}` : 'Registro de asistencia';
-    res.render('attendance/index', { title, date, branch, saved, ...data, statuses: attendanceStatuses, errors: [], exportQuery });
+    res.render('attendance/index', {
+      title,
+      date,
+      branch,
+      saved,
+      imported,
+      canImport: branch === biometricBranch,
+      biometricBranch,
+      ...data,
+      statuses: attendanceStatuses,
+      errors: [],
+      exportQuery
+    });
   } catch (error) {
     next(error);
   }
@@ -220,6 +238,175 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
   }
 });
 
+attendanceRouter.post('/biometrico/analizar', async (req, res, next) => {
+  try {
+    const branch = clean(req.body.branch);
+    if (branch !== biometricBranch) {
+      return res.status(403).json({ ok: false, error: `La importacion solo esta disponible para la sucursal ${biometricBranch}.` });
+    }
+
+    const dataBase64 = String(req.body.file_data || '').replace(/^data:[^;]*;base64,/, '');
+    if (!dataBase64) {
+      return res.status(422).json({ ok: false, error: 'Seleccione el archivo Excel del biometrico.' });
+    }
+    const sizeBytes = Math.floor(dataBase64.length * 3 / 4);
+    if (sizeBytes > maxBiometricBytes) {
+      return res.status(422).json({ ok: false, error: 'El archivo supera los 10 MB permitidos.' });
+    }
+
+    let report;
+    try {
+      report = await parseBiometricReport(Buffer.from(dataBase64, 'base64'));
+    } catch (error) {
+      return res.status(422).json({ ok: false, error: biometricErrorMessage(error.message) });
+    }
+
+    // Se incluyen tambien los trabajadores inactivos: el reporte puede traer
+    // dias de alguien que ya salio de la empresa.
+    const allWorkers = await listWorkers();
+    const candidates = allWorkers
+      .filter((worker) => worker.branch === branch)
+      .sort(byName)
+      .map((worker) => ({
+        id: String(worker.id),
+        full_name: worker.full_name,
+        cedula: worker.cedula,
+        status: worker.status
+      }));
+    const matches = suggestMatches(report.workers.map((worker) => worker.excel_name), candidates);
+
+    res.json({
+      ok: true,
+      branch,
+      file_name: clean(req.body.file_name),
+      sheet: report.sheet,
+      range: report.range,
+      days: report.days,
+      candidates,
+      workers: report.workers.map((worker, index) => ({
+        excel_id: worker.excel_id,
+        excel_name: worker.excel_name,
+        dept: worker.dept,
+        match: matches[index].match,
+        worker_id: matches[index].worker_id,
+        alternatives: matches[index].alternatives,
+        score: matches[index].score,
+        days: worker.days
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+attendanceRouter.post('/biometrico/guardar', async (req, res, next) => {
+  try {
+    const branch = clean(req.body.branch);
+    if (branch !== biometricBranch) {
+      return res.status(403).json({ ok: false, error: `La importacion solo esta disponible para la sucursal ${biometricBranch}.` });
+    }
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) {
+      return res.status(422).json({ ok: false, error: 'No hay dias para guardar.' });
+    }
+    if (rows.length > 1000) {
+      return res.status(422).json({ ok: false, error: 'El reporte tiene demasiados dias para guardar de una vez.' });
+    }
+
+    const allWorkers = await listWorkers();
+    const workerMap = new Map(allWorkers.map((worker) => [String(worker.id), worker]));
+    const registeredBy = clean(req.body.registered_by) || 'Administrador';
+    const pending = [];
+    const errors = [];
+    const seen = new Set();
+
+    rows.forEach((row, index) => {
+      const worker = workerMap.get(String(row?.worker_id ?? ''));
+      const recordDate = clean(row?.record_date);
+      const label = worker ? worker.full_name : `fila ${index + 1}`;
+      if (!worker || worker.branch !== branch) {
+        errors.push(`${label}: seleccione un trabajador de ${branch}.`);
+        return;
+      }
+      if (!isValidDate(recordDate)) {
+        errors.push(`${label}: la fecha no es valida.`);
+        return;
+      }
+
+      const status = biometricStatuses.has(clean(row?.status)) ? clean(row.status) : 'ASISTENCIA NORMAL';
+      const entry = sanitizeTime(row?.entry_time);
+      const lunchOut = sanitizeTime(row?.lunch_out);
+      const lunchIn = sanitizeTime(row?.lunch_in);
+      const exit = sanitizeTime(row?.exit_time);
+      const invalidTime = [entry, lunchOut, lunchIn, exit].find((time) => !time.valid);
+      if (invalidTime) {
+        errors.push(`${label} ${recordDate}: hay una hora con formato invalido.`);
+        return;
+      }
+      if (status !== 'DIA LIBRE' && !entry.value) {
+        errors.push(`${label} ${recordDate}: ingrese la hora de entrada.`);
+        return;
+      }
+
+      const key = `${worker.id}|${recordDate}`;
+      if (seen.has(key)) {
+        errors.push(`${label} ${recordDate}: el dia esta repetido.`);
+        return;
+      }
+      seen.add(key);
+
+      const isWorked = status === 'ASISTENCIA NORMAL' || status === 'ATRASO';
+      const lunchOutValue = isWorked ? lunchOut.value : '';
+      const lunchInValue = isWorked ? lunchIn.value : '';
+      const exitValue = isWorked ? exit.value : '';
+      pending.push({
+        worker_id: String(worker.id),
+        record_date: recordDate,
+        status,
+        entry_time: status === 'ASISTENCIA NORMAL' ? entry.value : '',
+        scheduled_entry_time: status === 'ATRASO' ? '07:00' : '',
+        actual_arrival_time: status === 'ATRASO' ? entry.value : '',
+        late_minutes: calculateLateMinutes({
+          status,
+          entry: entry.value,
+          scheduled: '07:00',
+          expectedEntry: '07:00',
+          lunchOut: lunchOutValue,
+          lunchIn: lunchInValue,
+          exit: exitValue
+        }),
+        observation: clean(row?.observation),
+        registered_by: registeredBy,
+        justified_reason: '',
+        has_support_doc: 0,
+        permit_time_out: '',
+        permit_time_return: '',
+        permit_reason: '',
+        permit_full_day: 0,
+        lunch_out: lunchOutValue,
+        lunch_in: lunchInValue,
+        exit_time: exitValue
+      });
+    });
+
+    if (errors.length) {
+      return res.status(422).json({ ok: false, error: errors[0], errors: errors.slice(0, 20) });
+    }
+    if (!pending.length) {
+      return res.status(422).json({ ok: false, error: 'No hay dias asignados a trabajadores para guardar.' });
+    }
+
+    if (typeof upsertAttendanceBatch === 'function') {
+      await upsertAttendanceBatch(pending);
+    } else {
+      for (const record of pending) await upsertAttendance(record);
+    }
+    res.json({ ok: true, saved: pending.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
 attendanceRouter.post('/registro/editar', async (req, res, next) => {
   try {
     const records = await listAttendance();
@@ -320,7 +507,20 @@ async function renderAttendanceWithErrors(res, date, errors, branch = '') {
   const data = await attendanceViewData(date, branch);
   const exportQuery = new URLSearchParams({ date, ...(branch ? { branch } : {}) }).toString();
   const title = branch ? `Asistencia · ${branch}` : 'Registro de asistencia';
-  res.status(422).render('attendance/index', { title, date, branch, saved: 0, branches: data.branches, ...data, statuses: attendanceStatuses, errors, exportQuery });
+  res.status(422).render('attendance/index', {
+    title,
+    date,
+    branch,
+    saved: 0,
+    imported: 0,
+    canImport: branch === biometricBranch,
+    biometricBranch,
+    branches: data.branches,
+    ...data,
+    statuses: attendanceStatuses,
+    errors,
+    exportQuery
+  });
 }
 
 async function attendanceViewData(date, branch) {
@@ -356,6 +556,33 @@ async function attendanceExportData(query) {
   const branch = clean(query.branch);
   const { records } = await attendanceViewData(date, branch);
   return { date, rows: records };
+}
+
+function biometricErrorMessage(code) {
+  switch (code) {
+    case 'REPORTE_VACIO':
+      return 'El archivo esta vacio.';
+    case 'REPORTE_INVALIDO':
+      return 'El archivo no es un Excel valido.';
+    case 'REPORTE_SIN_HOJAS':
+      return 'El Excel no tiene hojas para leer.';
+    case 'REPORTE_SIN_RANGO':
+      return 'No se encontro el rango de fechas (Statistics Date) en el reporte.';
+    case 'REPORTE_SIN_DIAS':
+      return 'No se encontro la fila con los dias del mes.';
+    case 'REPORTE_SIN_TRABAJADORES':
+      return 'No se encontraron trabajadores con marcas en el reporte.';
+    default:
+      return 'No se pudo interpretar el reporte del biometrico.';
+  }
+}
+
+function sanitizeTime(value) {
+  const text = clean(value);
+  if (!text) return { value: '', valid: true };
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/.exec(text);
+  if (!match) return { value: '', valid: false };
+  return { value: `${match[1].padStart(2, '0')}:${match[2]}`, valid: true };
 }
 
 function normalizeAttendance(body) {

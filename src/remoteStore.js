@@ -54,6 +54,7 @@ export const createBranch = (name) => call('createBranch', name);
 
 export const listAttendance = () => call('listAttendance');
 export const upsertAttendance = (record) => call('upsertAttendance', record);
+export const upsertAttendanceBatch = (records) => call('upsertAttendanceBatch', records);
 export const updateAttendanceRecord = (id, record) => call('updateAttendanceRecord', String(id), record);
 export const deleteAttendanceRecord = (id) => call('deleteAttendanceRecord', String(id));
 
