@@ -41,6 +41,12 @@ if (appUser && appPassword) {
 
 app.use(express.static(path.resolve('public')));
 
+// Diagnostico rapido: indica que almacenamiento esta usando la app.
+app.get('/estado', (req, res) => {
+  const backend = (process.env.DATA_BACKEND || (process.env.VERCEL ? 'remote' : 'sqlite')).trim().toLowerCase();
+  res.json({ ok: true, backend });
+});
+
 app.use(async (req, res, next) => {
   res.locals.path = req.path;
   try {
