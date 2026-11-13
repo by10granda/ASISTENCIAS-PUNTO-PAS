@@ -10,10 +10,12 @@
     "api": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/apiServer.js",
     "api:dev": "node --watch --experimental-sqlite --disable-warning=ExperimentalWarning src/apiServer.js",
     "migrate": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/migrate-from-sheets.js",
+    "migrate:turso": "node scripts/migrate-to-turso.mjs",
     "backup": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/backup.js",
     "test": "node --experimental-sqlite --disable-warning=ExperimentalWarning --test"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
