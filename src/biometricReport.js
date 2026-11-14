@@ -79,9 +79,13 @@ export async function parseBiometricReport(input) {
 
 function pickSheet(workbook) {
   const sheets = workbook.worksheets || [];
-  return sheets.find((sheet) => normalizeText(sheet.name) === normalizeText(BIOMETRIC_SHEET))
-    || sheets.find((sheet) => /att\.?\s*record/i.test(sheet.name))
-    || sheets[0];
+  const byName = sheets.find((sheet) => normalizeText(sheet.name) === normalizeText(BIOMETRIC_SHEET))
+    || sheets.find((sheet) => /att\.?\s*record/i.test(sheet.name));
+  if (byName) return byName;
+  // Si la hoja del reporte tiene otro nombre, buscar la que realmente tenga
+  // el rango de fechas y la fila de dias (a veces el libro trae una portada).
+  const byLayout = sheets.find((sheet) => findRange(sheet) && findDayHeader(sheet));
+  return byLayout || sheets[0];
 }
 
 function findRange(sheet) {
@@ -91,9 +95,11 @@ function findRange(sheet) {
     for (let column = 1; column <= Math.max(sheet.columnCount || 0, 1); column += 1) {
       const text = cellText(row.getCell(column).value);
       if (!text) continue;
-      const match = /(\d{4}-\d{2}-\d{2})\s*[~\-]\s*(\d{4}-\d{2}-\d{2})/.exec(text);
-      if (match && match[1] <= match[2]) {
-        return { start: match[1], end: match[2] };
+      const match = /(\d{4})[-/](\d{2})[-/](\d{2})\s*(?:~|-|to|a|hasta)\s*(\d{4})[-/](\d{2})[-/](\d{2})/i.exec(text);
+      if (match) {
+        const start = `${match[1]}-${match[2]}-${match[3]}`;
+        const end = `${match[4]}-${match[5]}-${match[6]}`;
+        if (start <= end) return { start, end };
       }
     }
   }
@@ -112,7 +118,8 @@ function findDayHeader(sheet) {
       columns.push({ col: column, day });
     }
     const uniqueDays = new Set(columns.map((column) => column.day));
-    if (columns.length >= 20 && uniqueDays.size >= 20) {
+    // Un reporte puede ser de un solo dia o de pocos dias; no exigir 20 columnas.
+    if (columns.length >= 1 && uniqueDays.size >= 1) {
       return { row: rowNumber, columns };
     }
   }
@@ -158,12 +165,12 @@ function findDateForDay(day, start, end, range) {
 function parseWorkerHeader(value) {
   const text = cellText(value);
   if (!text) return null;
-  const match = /ID\.?\s*:?\s*(\d+)\s+Name\s*:\s*([\s\S]*?)\s+Dept\.?\s*Name\s*:\s*([\s\S]*)/i.exec(text);
+  const match = /(?:ID|No)\.?\s*:?\s*(\d+)\s+Name\s*:\s*([\s\S]*?)(?:\s+Dept\.?\s*Name\s*:\s*([\s\S]*))?$/i.exec(text);
   if (!match) return null;
   return {
     excel_id: match[1],
     excel_name: collapseSpaces(match[2]),
-    dept: collapseSpaces(match[3])
+    dept: collapseSpaces(match[3] || '')
   };
 }
 

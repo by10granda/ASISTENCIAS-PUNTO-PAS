@@ -81,6 +81,30 @@ test('normaliza horas y descarta marcas invalidas o repetidas', () => {
   assert.equal(mapPunches(['07:00', '12:00', '13:00', '18:00']).exit_time, '18:00');
 });
 
+test('interpreta un reporte de pocos dias (rango corto)', async () => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet('Portada').getCell('A1').value = 'Reporte';
+  const sheet = workbook.addWorksheet('Reporte');
+  sheet.getCell('A1').value = 'Att. Record Report';
+  sheet.getCell('A2').value = 'Statistics Date:2026-11-12 ~ 2026-11-13    Create Date:2026-11-14';
+  sheet.getRow(3).getCell(1).value = '12\n(4)';
+  sheet.getRow(3).getCell(2).value = '13\n(5)';
+  sheet.getRow(4).getCell(1).value = 'ID.: 1       Name: LUCAS CARLOS    Dept.Name: PUNTO PAS';
+  sheet.getRow(5).getCell(1).value = '06:55\n12:00';
+  sheet.getRow(5).getCell(2).value = '06:57\n18:02';
+  sheet.getRow(6).getCell(1).value = 'ID.: 2       Name: ARROYO MARTHA';
+  sheet.getRow(7).getCell(1).value = '06:54\n12:01';
+
+  const report = await parseBiometricReport(Buffer.from(await workbook.xlsx.writeBuffer()));
+  assert.deepEqual(report.range, { start: '2026-11-12', end: '2026-11-13' });
+  assert.equal(report.workers.length, 2);
+  assert.deepEqual(report.workers[0].days.map((day) => day.date), ['2026-11-12', '2026-11-13']);
+  assert.equal(report.workers[0].days[0].lunch_out, '12:00');
+  assert.equal(report.workers[0].days[1].exit_time, '18:02');
+  assert.equal(report.workers[1].excel_name, 'ARROYO MARTHA');
+  assert.equal(report.workers[1].dept, '');
+});
+
 test('sugiere trabajadores aunque el Excel abrevie o invierta los nombres', () => {
   const candidates = [
     { id: 1, full_name: 'Lucas  Pico  Carlos Samuel' },

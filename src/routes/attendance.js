@@ -22,7 +22,7 @@ const allowedCertificateMimes = new Set(['image/jpeg', 'image/png', 'image/webp'
 const maxCertificateBytes = 10 * 1024 * 1024;
 const maxBulkCertificateBytes = 30 * 1024 * 1024;
 const biometricBranch = 'VARIEDADES PAS';
-const maxBiometricBytes = 10 * 1024 * 1024;
+const maxBiometricBytes = 3 * 1024 * 1024;
 const biometricStatuses = new Set(['ASISTENCIA NORMAL', 'ATRASO', 'DIA LIBRE']);
 
 const attendanceColumns = [
@@ -249,14 +249,18 @@ attendanceRouter.post('/biometrico/analizar', async (req, res, next) => {
     }
     const sizeBytes = Math.floor(dataBase64.length * 3 / 4);
     if (sizeBytes > maxBiometricBytes) {
-      return res.status(422).json({ ok: false, error: 'El archivo supera los 10 MB permitidos.' });
+      return res.status(422).json({ ok: false, error: 'El archivo supera los 3 MB que acepta el servidor. Exporte un rango de fechas mas corto o divida el reporte.' });
     }
 
     let report;
     try {
       report = await parseBiometricReport(Buffer.from(dataBase64, 'base64'));
     } catch (error) {
-      return res.status(422).json({ ok: false, error: biometricErrorMessage(error.message) });
+      return res.status(422).json({
+        ok: false,
+        code: error.message,
+        error: biometricErrorMessage(error.message)
+      });
     }
 
     // Se incluyen tambien los trabajadores inactivos: el reporte puede traer
@@ -293,7 +297,12 @@ attendanceRouter.post('/biometrico/analizar', async (req, res, next) => {
       }))
     });
   } catch (error) {
-    next(error);
+    console.error('Error al analizar el reporte del biometrico:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'No se pudo procesar el archivo en el servidor. Intente de nuevo o exporte un rango mas corto.',
+      detail: error.message
+    });
   }
 });
 
@@ -401,7 +410,12 @@ attendanceRouter.post('/biometrico/guardar', async (req, res, next) => {
     }
     res.json({ ok: true, saved: pending.length });
   } catch (error) {
-    next(error);
+    console.error('Error al guardar la importacion del biometrico:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'No se pudieron guardar los datos en el servidor. Intente de nuevo.',
+      detail: error.message
+    });
   }
 });
 
@@ -559,17 +573,17 @@ function biometricErrorMessage(code) {
     case 'REPORTE_VACIO':
       return 'El archivo esta vacio.';
     case 'REPORTE_INVALIDO':
-      return 'El archivo no es un Excel valido.';
+      return 'El archivo no es un Excel valido (.xlsx). Si su reporte esta en formato .xls antiguo, abralo en Excel y guardelo como .xlsx.';
     case 'REPORTE_SIN_HOJAS':
       return 'El Excel no tiene hojas para leer.';
     case 'REPORTE_SIN_RANGO':
-      return 'No se encontro el rango de fechas (Statistics Date) en el reporte.';
+      return 'No se encontro la linea "Statistics Date: ..." en el reporte. Verifique que sea el reporte del biometrico (Att. record report).';
     case 'REPORTE_SIN_DIAS':
-      return 'No se encontro la fila con los dias del mes.';
+      return 'No se encontro la fila con los dias del reporte. Verifique que sea el reporte del biometrico (Att. record report).';
     case 'REPORTE_SIN_TRABAJADORES':
-      return 'No se encontraron trabajadores con marcas en el reporte.';
+      return 'No se encontraron trabajadores con marcas en el reporte. Verifique el rango de fechas.';
     default:
-      return 'No se pudo interpretar el reporte del biometrico.';
+      return 'No se pudo interpretar el reporte. Verifique que sea el archivo "Att. record report" del biometrico.';
   }
 }
 

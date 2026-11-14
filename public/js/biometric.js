@@ -58,8 +58,8 @@
       alert('Seleccione un archivo Excel (.xlsx) del biométrico.');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('El archivo supera los 10 MB permitidos.');
+    if (file.size > 3 * 1024 * 1024) {
+      alert('El archivo supera los 3 MB que acepta el servidor. Exporte el reporte en un rango de fechas más corto o divídalo en partes.');
       return;
     }
 
@@ -73,7 +73,16 @@
         body: JSON.stringify({ branch, file_name: file.name, file_data: fileData })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.ok) throw new Error(payload.error || 'No se pudo interpretar el reporte.');
+      if (!response.ok || !payload.ok) {
+        if (response.status === 401) {
+          throw new Error('La sesión expiró. Recargue la página e inicie sesión nuevamente.');
+        }
+        if (response.status === 413) {
+          throw new Error('El archivo es demasiado grande para el servidor. Exporte un rango de fechas más corto o divídalo en partes.');
+        }
+        if (payload.detail) console.warn('Detalle del servidor:', payload.detail);
+        throw new Error(payload.error || `El servidor respondió con error ${response.status}. Intente de nuevo.`);
+      }
       prepare(payload);
     } catch (error) {
       showError(error.message);
@@ -413,6 +422,8 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload.ok) {
+        if (response.status === 401) throw new Error('La sesión expiró. Recargue la página e inicie sesión nuevamente.');
+        if (response.status === 413) throw new Error('El archivo es demasiado grande para el servidor. Exporte un rango de fechas más corto.');
         const message = Array.isArray(payload.errors) ? payload.errors.join('\n') : (payload.error || 'No se pudieron guardar los datos.');
         throw new Error(message);
       }
