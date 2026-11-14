@@ -133,6 +133,7 @@
           lunch_out: day.lunch_out || '',
           lunch_in: day.lunch_in || '',
           exit_time: day.exit_time || '',
+          observation: '',
           punch_count: day.punch_count || 0,
           removed: false
         });
@@ -248,6 +249,16 @@
       const lunchInCell = timeCell(day, 'lunch_in');
       const exitCell = timeCell(day, 'exit_time');
 
+      const observationCell = document.createElement('td');
+      const observationInput = document.createElement('input');
+      observationInput.type = 'text';
+      observationInput.placeholder = 'Opcional';
+      observationInput.value = day.observation || '';
+      observationInput.addEventListener('input', () => {
+        day.observation = observationInput.value;
+      });
+      observationCell.appendChild(observationInput);
+
       const lateCell = document.createElement('td');
       lateCell.className = 'biometric-late';
 
@@ -268,7 +279,7 @@
       });
       actionCell.appendChild(removeButton);
 
-      row.append(workerCell, dateCell, statusCell, entryCell, lunchOutCell, lunchInCell, exitCell, lateCell, actionCell);
+      row.append(workerCell, dateCell, statusCell, entryCell, lunchOutCell, lunchInCell, exitCell, observationCell, lateCell, actionCell);
       applyRowState(row, day, lateCell);
       fragment.appendChild(row);
     });
@@ -380,7 +391,8 @@
         entry_time: day.entry_time,
         lunch_out: day.lunch_out,
         lunch_in: day.lunch_in,
-        exit_time: day.exit_time
+        exit_time: day.exit_time,
+        observation: day.observation || ''
       }));
 
     if (!rows.length) {

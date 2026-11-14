@@ -173,8 +173,6 @@ attendanceRouter.post('/rapido', async (req, res, next) => {
         if (!entry) errors.push(`${rowLabel}: ingrese la hora real de llegada.`);
       }
       lateMinutes = calculateLateMinutes({ status, entry, scheduled: scheduledForRow, expectedEntry, lunchOut, lunchIn, exit });
-      if (status === 'FALTA JUSTIFICADA' && !observation) errors.push(`${rowLabel}: ingrese el motivo de la falta justificada.`);
-      if (status === 'PERMISO' && !observation) errors.push(`${rowLabel}: ingrese el motivo del permiso.`);
 
       const certificate = normalizeBulkCertificate(req.body, workerId);
       if (certificate && status !== 'FALTA JUSTIFICADA') errors.push(`${rowLabel}: el certificado solo aplica a faltas justificadas.`);
@@ -427,8 +425,6 @@ attendanceRouter.post('/registro/editar', async (req, res, next) => {
     if (!attendanceStatuses.includes(status)) errors.push('Seleccione un estado valido.');
     if (status === 'ASISTENCIA NORMAL' && !entry) errors.push('Ingrese la hora de entrada.');
     if (status === 'ATRASO' && (!scheduled || !actual)) errors.push('Ingrese la hora establecida y la hora real de llegada.');
-    if (status === 'FALTA JUSTIFICADA' && !clean(req.body.justified_reason)) errors.push('Ingrese el motivo de la falta justificada.');
-    if (status === 'PERMISO' && !clean(req.body.permit_reason)) errors.push('Ingrese el motivo del permiso.');
     const certificate = req.body.certificate_data ? normalizeCertificateUpload(req.body) : null;
     if (certificate && status !== 'FALTA JUSTIFICADA') errors.push('El certificado solo aplica a faltas justificadas.');
     if (certificate && !allowedCertificateMimes.has(certificate.mime_type)) errors.push('El certificado debe ser una imagen o un PDF.');
@@ -641,9 +637,7 @@ async function validateAttendance(record) {
   if (!attendanceStatuses.includes(record.status)) errors.push('Seleccione un estado valido.');
   if (!requireText(record.registered_by)) errors.push('Ingrese el usuario que registra.');
   if (record.status === 'ASISTENCIA NORMAL' && !requireText(record.entry_time)) errors.push('Ingrese la hora de entrada.');
-  if (record.status === 'FALTA JUSTIFICADA' && !requireText(record.justified_reason)) errors.push('Ingrese el motivo de la falta justificada.');
   if (record.status === 'ATRASO' && (!requireText(record.scheduled_entry_time) || !requireText(record.actual_arrival_time))) errors.push('Ingrese la hora establecida y la hora real de llegada.');
-  if (record.status === 'PERMISO' && !requireText(record.permit_reason)) errors.push('Ingrese el motivo del permiso.');
   return errors;
 }
 
