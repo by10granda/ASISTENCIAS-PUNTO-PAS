@@ -71,6 +71,8 @@
   .quick-head-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex: 1; }
   .quick-head-actions .inline-form { flex: 0 1 auto; flex-wrap: wrap; }
   .quick-head-actions .button { padding: 11px 16px; }
+  .quick-head-actions .button[disabled] { opacity: .55; cursor: not-allowed; }
+  .quick-head-actions .button small { display: block; font-size: .66rem; font-weight: 700; line-height: 1.1; }
   @media (max-width: 900px) {
     .quick-head-actions { flex-direction: column; align-items: stretch; }
   }
@@ -124,16 +126,21 @@
     </div>
     <div class="quick-head-actions">
       <form class="inline-form" method="get" action="/asistencia" id="quickFilterForm">
-        <select name="branch" id="quickBranch">
+        <select name="branch" id="quickBranch" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
           <option value="">Seleccione sucursal...</option>
           <% branches.forEach((name) => { %><option value="<%= name %>" <%= branch === name ? 'selected' : '' %>><%= name %></option><% }) %>
         </select>
         <input type="date" name="date" id="quickDate" value="<%= date %>">
         <button>Abrir tabla</button>
       </form>
-      <% if (canImport) { %>
-        <button type="button" class="button" id="biometricOpen">Añadir tabla</button>
-        <input type="file" id="biometricFile" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+      <% if (branches.includes(biometricBranch)) { %>
+        <button type="button" class="button" id="biometricOpen" <%= canImport ? '' : 'disabled' %> title="<%= canImport ? 'Importar el reporte del biométrico' : 'Elija la sucursal ' + biometricBranch + ' y presione Abrir tabla para importar' %>">
+          Añadir tabla
+          <% if (!canImport) { %><small>solo <%= biometricBranch %></small><% } %>
+        </button>
+        <% if (canImport) { %>
+          <input type="file" id="biometricFile" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        <% } %>
       <% } %>
     </div>
   </div>
